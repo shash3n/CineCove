@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 test("library, playback, history, subtitles, playlists, settings and privacy", async ({
   page,
+  baseURL,
 }) => {
   const errors: string[] = [];
   const outbound: string[] = [];
@@ -10,7 +11,7 @@ test("library, playback, history, subtitles, playlists, settings and privacy", a
   });
   page.on("request", (r) => {
     if (
-      !r.url().startsWith("http://127.0.0.1:5173") &&
+      !r.url().startsWith(baseURL!) &&
       !r.url().startsWith("blob:") &&
       !r.url().startsWith("data:")
     )

@@ -1,5 +1,12 @@
 # CineVault
 
+**Live app:** [cinevault-player.vercel.app](https://cinevault-player.vercel.app)
+
+TV playback includes a season/episode browser and previous/next navigation across
+seasons. Subtitle appearance supports font family, size, text color/opacity,
+character edges, background color/opacity, and resetting appearance defaults in
+Settings or the player. Preferences are saved locally.
+
 CineVault's original application code is licensed under the [MIT License](LICENSE).
 Third-party dependencies retain their own licenses. In particular, the bundled
 FFmpeg core includes GPL components such as libx264; the MIT license does not

@@ -48,6 +48,11 @@ export interface Preferences {
   subtitleSize: number;
   subtitleColor: string;
   subtitleBackground: boolean;
+  subtitleOpacity: number;
+  subtitleFont: string;
+  subtitleEdge: "none" | "shadow" | "outline" | "raised";
+  subtitleBackgroundColor: string;
+  subtitleBackgroundOpacity: number;
   subtitlePosition: "bottom" | "top";
   subtitleLanguage: string;
 }
@@ -63,6 +68,11 @@ export const defaults: Preferences = {
   subtitleSize: 24,
   subtitleColor: "#ffffff",
   subtitleBackground: true,
+  subtitleOpacity: 1,
+  subtitleFont: "sans-serif",
+  subtitleEdge: "shadow",
+  subtitleBackgroundColor: "#000000",
+  subtitleBackgroundOpacity: 0.7,
   subtitlePosition: "bottom",
   subtitleLanguage: "en",
 };

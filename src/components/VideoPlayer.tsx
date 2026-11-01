@@ -39,6 +39,7 @@ import {
   extension,
 } from "../lib/media";
 import { parseSubtitles } from "../lib/subtitles";
+import { SubtitleAppearance, subtitleStyle } from "./SubtitleAppearance";
 import { EmbeddedMediaService, trackLabel } from "../lib/embedded";
 import type { EmbeddedTrack, MediaProbe } from "../lib/embedded";
 import { useSegmentAudio } from "../lib/useSegmentAudio";
@@ -330,6 +331,7 @@ export function SubtitleMenu({
         Positive offset shows subtitles later. Embedded text tracks use the same
         timing offset when extracted locally.
       </p>
+      <SubtitleAppearance prefs={prefs} setPrefs={setPrefs} />
     </>
   );
 }
@@ -571,6 +573,7 @@ export default function VideoPlayer({
   onClose,
   onFavorite,
   notify,
+  children,
 }: {
   entry: VideoEntry;
   file: File;
@@ -580,6 +583,7 @@ export default function VideoPlayer({
   onClose: () => void;
   onFavorite: () => void;
   notify: (message: string, error?: boolean) => void;
+  children?: React.ReactNode;
 }) {
   const video = useRef<HTMLVideoElement>(null),
     stage = useRef<HTMLDivElement>(null),
@@ -1046,9 +1050,7 @@ export default function VideoPlayer({
         tabIndex={0}
         style={
           {
-            "--subtitle-size": `${prefs.subtitleSize}px`,
-            "--subtitle-color": prefs.subtitleColor,
-            "--subtitle-bg": prefs.subtitleBackground ? "#000b" : "transparent",
+            ...subtitleStyle(prefs),
           } as React.CSSProperties
         }
       >
@@ -1435,6 +1437,7 @@ export default function VideoPlayer({
           <ChevronDown size={14} />
         </button>
       </div>
+      {children}
       <input
         type="file"
         hidden

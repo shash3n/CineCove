@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { size } from "../lib/media";
+import { SubtitleAppearance } from "./SubtitleAppearance";
 export function SettingsPage({
   prefs,
   setPrefs,
@@ -205,6 +206,7 @@ export function SettingsPage({
             value={prefs.subtitleBackground}
             onChange={(v) => update("subtitleBackground", v)}
           />
+          <SubtitleAppearance prefs={prefs} setPrefs={setPrefs} />
         </section>
         <section className="settings-card">
           <h2>

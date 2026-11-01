@@ -52,6 +52,7 @@ import type { LibraryActions } from "./components/Library";
 import { ImportDialog } from "./components/ImportDialog";
 import { SettingsPage } from "./components/SettingsPage";
 import VideoPlayer from "./components/VideoPlayer";
+import { EpisodeBrowser } from "./components/EpisodeBrowser";
 import {
   Modal,
   ToastNotifications,
@@ -1354,7 +1355,16 @@ export default function App() {
             update(player.id, { favorite: !playerEntry.favorite })
           }
           notify={notify}
-        />
+        >
+          <EpisodeBrowser
+            entry={playerEntry}
+            videos={videos}
+            shows={shows}
+            onPlay={(v) => {
+              if (v.id !== player.id) void play(v);
+            }}
+          />
+        </VideoPlayer>
       )}
       <ToastNotifications
         items={toasts}

@@ -4241,3 +4241,123 @@ main {
 :root[data-theme="light"] .player-shell .button.primary {
   color: #171222;
 }
+.subtitle-overlay {
+  font-family: var(--subtitle-font, sans-serif);
+  text-shadow: var(--subtitle-edge, 0 2px 3px #000c);
+}
+.player-stage video::cue {
+  font-family: var(--subtitle-font, sans-serif);
+  text-shadow: var(--subtitle-edge, 0 2px 3px #000c);
+}
+.subtitle-appearance input[type="range"] {
+  width: 90px;
+  min-width: 40px;
+}
+.subtitle-appearance select {
+  max-width: 145px;
+}
+.subtitle-style-preview {
+  padding: 20px 10px;
+  text-align: center;
+  background: linear-gradient(120deg, #576275, #203137);
+  border-radius: 6px;
+  margin: 14px 0;
+}
+.subtitle-style-preview span {
+  color: var(--subtitle-color);
+  background: var(--subtitle-bg);
+  font-family: var(--subtitle-font);
+  font-size: var(--subtitle-size);
+  text-shadow: var(--subtitle-edge);
+  padding: 3px 6px;
+}
+.episode-browser {
+  width: calc(100% - 70px);
+  max-width: 1540px;
+  margin: 35px auto 45px;
+}
+.episode-browser .eyebrow {
+  margin-bottom: 9px;
+}
+.episode-navigation {
+  display: flex;
+  gap: 10px;
+}
+.episode-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.episode-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 12px;
+  text-align: left;
+  border: 1px solid #ffffff14;
+  border-radius: 8px;
+  background: #17181d;
+  min-width: 0;
+}
+.episode-item.current {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.08);
+}
+.episode-item > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.episode-item strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+}
+.episode-item small {
+  display: block;
+  margin-top: 7px;
+  font-size: 10px;
+  color: #aaa5b5;
+}
+.episode-thumbnail {
+  width: 100px;
+  aspect-ratio: 16/9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  overflow: hidden;
+  background: #24242d;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+.episode-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.episode-navigation button:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+@media (max-width: 760px) {
+  .episode-browser {
+    width: calc(100% - 40px);
+  }
+  .episode-browser .section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .episode-list {
+    grid-template-columns: 1fr;
+  }
+  .episode-navigation .button {
+    font-size: 10px;
+  }
+}
+.settings-card .player-setting {
+  color: var(--text);
+  border-color: var(--border);
+}
