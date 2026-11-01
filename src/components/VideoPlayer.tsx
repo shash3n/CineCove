@@ -63,6 +63,7 @@ export function Timeline({
   useEffect(() => {
     const service = mediaSource ? new TimelinePreview(mediaSource) : null;
     decoder.current = service;
+    setPreview(null);
     return () => {
       service?.dispose();
       decoder.current = null;
@@ -74,9 +75,14 @@ export function Timeline({
       : Math.floor((hover * duration) / 2) * 2;
   useEffect(() => {
     let active = true;
-    setPreview(null);
     setPending(target !== null);
     if (target === null) return;
+    const cached = decoder.current?.cached(target);
+    if (cached) {
+      setPreview(cached);
+      setPending(false);
+      return;
+    }
     const timer = setTimeout(() => {
       const service = decoder.current;
       if (!service) {
@@ -88,11 +94,12 @@ export function Timeline({
         .catch(() => null)
         .then((frame) => {
           if (active) {
-            setPreview(frame);
+            if (frame) setPreview(frame);
             setPending(false);
+            if (frame) void service.prefetch(target);
           }
         });
-    }, 160);
+    }, 60);
     return () => {
       active = false;
       clearTimeout(timer);
@@ -113,7 +120,7 @@ export function Timeline({
           style={{ left: `${Math.min(94, Math.max(6, hover * 100))}%` }}
         >
           {preview ? (
-            <img src={preview} alt={`Preview near ${time(target || 0)}`} />
+            <img src={preview} alt="Nearby timeline frame" />
           ) : (
             <span className="preview-message">
               {pending ? "Loading preview…" : "Preview unavailable"}

@@ -7,6 +7,20 @@ export class TimelinePreview {
   private disposed = false;
   private cancel?: () => void;
   constructor(private source: string) {}
+  cached(seconds: number) {
+    return this.cache.get(Math.floor(seconds / 2) * 2) || null;
+  }
+  async prefetch(seconds: number) {
+    let generation = this.ticket;
+    for (const offset of [2, -2, 4, -4]) {
+      if (this.disposed || generation !== this.ticket) return;
+      const time = seconds + offset;
+      if (time < 0 || this.cached(time)) continue;
+      const job = this.frame(time);
+      generation = this.ticket;
+      await job.catch(() => null);
+    }
+  }
   frame(seconds: number): Promise<string | null> {
     const key = Math.floor(seconds / 2) * 2,
       ticket = ++this.ticket;
