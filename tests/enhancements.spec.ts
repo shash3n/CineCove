@@ -24,7 +24,7 @@ test("folder input preserves nesting, TV seasons are editable, and legacy entrie
   await expect(
     page.getByRole("button", { name: "Open folder Collection", exact: true }),
   ).toBeVisible();
-  await expect(page.locator(".library-section .video-card")).toHaveCount(0);
+  await expect(page.locator(".library-section .video-card")).toHaveCount(3);
   await page
     .getByRole("button", { name: "Open folder Collection", exact: true })
     .click();

@@ -685,12 +685,15 @@ export default function App() {
                   message:
                     "Remove all imported entries, folder links, playlists, TV shows, thumbnails and playback history from this browser. Original files and appearance preferences are kept.",
                   action: async () => {
-                    await Promise.all([
-                      ...videos.map((v) => storage.removeVideo(v.id)),
-                      ...folders.map((f) => storage.removeFolder(f.id)),
-                      ...playlists.map((p) => storage.removePlaylist(p.id)),
-                      ...shows.map((s) => storage.removeShow(s.id)),
-                    ]);
+                    try {
+                      await storage.clearLibrary();
+                    } catch {
+                      notify(
+                        "Could not clear local storage. Your library is unchanged.",
+                        true,
+                      );
+                      return;
+                    }
                     files.current.clear();
                     entries.current = [];
                     setVideos([]);

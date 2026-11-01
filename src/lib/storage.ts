@@ -61,6 +61,17 @@ async function write(store: string, value: unknown, remove = false) {
   });
 }
 export const storage = {
+  clearLibrary: async () => {
+    const d = await db();
+    return new Promise<void>((resolve, reject) => {
+      const names = ["videos", "folders", "playlists", "shows"];
+      const tx = d.transaction(names, "readwrite");
+      names.forEach((n) => tx.objectStore(n).clear());
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+  },
   videos: () => readAll<VideoEntry>("videos"),
   playlists: () => readAll<Playlist>("playlists"),
   folders: () => readAll<Folder>("folders"),
