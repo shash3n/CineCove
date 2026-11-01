@@ -7,12 +7,7 @@ seasons. Subtitle appearance supports font family, size, text color/opacity,
 character edges, background color/opacity, and resetting appearance defaults in
 Settings or the player. Preferences are saved locally.
 
-CineVault's original application code is licensed under the [MIT License](LICENSE).
-Third-party dependencies retain their own licenses. In particular, the bundled
-FFmpeg core includes GPL components such as libx264; the MIT license does not
-relicense that engine or replace its distribution obligations.
-
-A private, local-first cinema for your browser. React + TypeScript, Tailwind CSS, HTML5 Video, IndexedDB, and an optional, self-hosted FFmpeg.wasm engine. Includes an original CineVault app icon and a responsive midnight/daylight interface.
+CineVault a private, local-first cinema for your browser. React + TypeScript, Tailwind CSS, HTML5 Video, IndexedDB, and an optional, self-hosted FFmpeg.wasm engine. Includes an original CineVault app icon and a responsive midnight/daylight interface.
 
 ## Run locally
 
