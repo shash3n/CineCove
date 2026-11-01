@@ -197,7 +197,10 @@ export default function App() {
       if (state) {
         setPageState(state.page);
         setFolderLocation(state.folder || null);
-        setPlayer(null);
+        const file = state.playerId
+          ? files.current.get(state.playerId)
+          : undefined;
+        setPlayer(file ? { id: state.playerId, file } : null);
         setSearch("");
         setFormat("");
         setRes("");
@@ -441,6 +444,10 @@ export default function App() {
       return;
     }
     update(v.id, { continueHidden: false });
+    history.pushState(
+      { cinevault: { page, folder: folderLocation, playerId: v.id } },
+      "",
+    );
     setPlayer({ id: v.id, file });
   }
   async function importFolderInput(selected: File[]) {
@@ -1144,6 +1151,16 @@ export default function App() {
             if (fileId(file) === reconnect.id) {
               files.current.set(reconnect.id, file);
               update(reconnect.id, { continueHidden: false });
+              history.pushState(
+                {
+                  cinevault: {
+                    page,
+                    folder: folderLocation,
+                    playerId: reconnect.id,
+                  },
+                },
+                "",
+              );
               setPlayer({ id: reconnect.id, file });
               setReconnect(null);
             } else
@@ -1395,7 +1412,13 @@ export default function App() {
           prefs={prefs}
           setPrefs={setPrefs}
           onSave={(patch) => update(player.id, patch)}
-          onClose={() => setPlayer(null)}
+          onClose={() => {
+            history.replaceState(
+              { cinevault: { page, folder: folderLocation } },
+              "",
+            );
+            setPlayer(null);
+          }}
           onFavorite={() =>
             update(player.id, { favorite: !playerEntry.favorite })
           }
