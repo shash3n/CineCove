@@ -3967,7 +3967,7 @@ main {
 }
 .show-cover {
   width: 100%;
-  aspect-ratio: 16/10;
+  aspect-ratio: 16/9;
   background:
     radial-gradient(
       ellipse at 50% 20%,
@@ -4360,4 +4360,9 @@ main {
 .settings-card .player-setting {
   color: var(--text);
   border-color: var(--border);
+}
+@media (min-width: 1600px) {
+  .show-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }

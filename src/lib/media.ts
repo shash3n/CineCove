@@ -74,6 +74,9 @@ export function inspectFile(
     const video = document.createElement("video");
     const url = URL.createObjectURL(file);
     let settled = false;
+    let candidates: number[] = [];
+    let best: Partial<VideoEntry> = {};
+    let bestScore = -1;
     const finish = (result: Partial<VideoEntry>) => {
       if (settled) return;
       settled = true;
@@ -84,7 +87,7 @@ export function inspectFile(
       URL.revokeObjectURL(url);
       resolve(result);
     };
-    const timer = setTimeout(() => finish({}), 7000);
+    const timer = setTimeout(() => finish(best), 12000);
     const info = () => ({
       duration: Number.isFinite(video.duration) ? video.duration : 0,
       width: video.videoWidth,
@@ -94,9 +97,10 @@ export function inspectFile(
     video.preload = "metadata";
     video.onloadedmetadata = () => {
       if (!thumbnail || !video.videoWidth) return finish(info());
-      video.currentTime = Number.isFinite(video.duration)
-        ? Math.min(10, video.duration * 0.12)
-        : 0.2;
+      candidates = Number.isFinite(video.duration)
+        ? [0.18, 0.36, 0.55].map((p) => Math.max(0.01, video.duration * p))
+        : [0.2];
+      video.currentTime = candidates.shift()!;
     };
     video.onseeked = () => {
       try {
@@ -104,7 +108,32 @@ export function inspectFile(
         c.width = 480;
         c.height = Math.round((480 * video.videoHeight) / video.videoWidth);
         c.getContext("2d")!.drawImage(video, 0, 0, c.width, c.height);
-        finish({ ...info(), thumbnail: c.toDataURL("image/jpeg", 0.76) });
+        const pixels = c
+          .getContext("2d")!
+          .getImageData(0, 0, c.width, c.height).data;
+        let sum = 0,
+          square = 0,
+          count = 0,
+          visible = 0;
+        for (let i = 0; i < pixels.length; i += 64) {
+          const l =
+            0.2126 * pixels[i] +
+            0.7152 * pixels[i + 1] +
+            0.0722 * pixels[i + 2];
+          sum += l;
+          square += l * l;
+          count++;
+          if (l > 22 && l < 235) visible++;
+        }
+        const score =
+          Math.sqrt(Math.max(0, square / count - (sum / count) ** 2)) *
+          (visible / count);
+        if (score > bestScore) {
+          bestScore = score;
+          best = { ...info(), thumbnail: c.toDataURL("image/jpeg", 0.76) };
+        }
+        if (candidates.length) video.currentTime = candidates.shift()!;
+        else finish(best);
       } catch {
         finish(info());
       }

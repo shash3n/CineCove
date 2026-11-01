@@ -191,7 +191,34 @@ export default function App() {
         );
   }, [prefs.theme, prefs.accent]);
   useEffect(() => setSort(prefs.sort), [prefs.sort]);
+  useEffect(() => {
+    const restore = () => {
+      const state = history.state?.cinevault;
+      if (state) {
+        setPageState(state.page);
+        setFolderLocation(state.folder || null);
+        setPlayer(null);
+        setSearch("");
+        setFormat("");
+        setRes("");
+      }
+    };
+    if (history.state?.cinevault) restore();
+    else
+      history.replaceState(
+        { ...history.state, cinevault: { page: "Home", folder: null } },
+        "",
+      );
+    window.addEventListener("popstate", restore);
+    return () => window.removeEventListener("popstate", restore);
+  }, []);
+  const navigateFolder = (folder: FolderLocation | null) => {
+    history.pushState({ cinevault: { page, folder } }, "");
+    setFolderLocation(folder);
+  };
   const setPage = (p: Page) => {
+    if (p !== page || folderLocation)
+      history.pushState({ cinevault: { page: p, folder: null } }, "");
     setPageState(p);
     setFolderLocation(null);
     setSearch("");
@@ -907,7 +934,7 @@ export default function App() {
                   folders={folders}
                   videos={videos}
                   location={folderLocation}
-                  onNavigate={setFolderLocation}
+                  onNavigate={navigateFolder}
                   onShow={(source) => setShowEditor({ source })}
                   onRescan={rescan}
                 />
@@ -951,7 +978,25 @@ export default function App() {
                               className="show-cover"
                               onClick={() => setPage(`show:${s.id}`)}
                             >
-                              <Clapperboard size={40} />
+                              {collection.find(
+                                (v) =>
+                                  episodeFor(v, shows)?.showId === s.id &&
+                                  v.thumbnail,
+                              )?.thumbnail ? (
+                                <img
+                                  src={
+                                    collection.find(
+                                      (v) =>
+                                        episodeFor(v, shows)?.showId === s.id &&
+                                        v.thumbnail,
+                                    )!.thumbnail
+                                  }
+                                  alt=""
+                                  loading="lazy"
+                                />
+                              ) : (
+                                <Clapperboard size={40} />
+                              )}
                               <span>
                                 TV SHOW ·{" "}
                                 {
