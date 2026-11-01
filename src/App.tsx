@@ -687,7 +687,7 @@ export default function App() {
         createPlaylist={createPlaylist}
         importFolder={chooseFolder}
       />
-      <div className="workspace">
+      <div className={`workspace ${prefs.compact ? "layout-compact" : ""}`}>
         <TopNavigation
           search={search}
           setSearch={(s) => {

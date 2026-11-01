@@ -44,18 +44,60 @@ import { EmbeddedMediaService, trackLabel } from "../lib/embedded";
 import type { EmbeddedTrack, MediaProbe } from "../lib/embedded";
 import { useSegmentAudio } from "../lib/useSegmentAudio";
 const speeds = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3];
+import { TimelinePreview } from "../lib/timelinePreview";
 export function Timeline({
   position,
   duration,
   onSeek,
-  thumbnail,
+  mediaSource,
 }: {
   position: number;
   duration: number;
   onSeek: (n: number) => void;
-  thumbnail?: string;
+  mediaSource?: string;
 }) {
   const [hover, setHover] = useState<number | null>(null);
+  const [preview, setPreview] = useState<string | null>(null),
+    [pending, setPending] = useState(false);
+  const decoder = useRef<TimelinePreview | null>(null);
+  useEffect(() => {
+    const service = mediaSource ? new TimelinePreview(mediaSource) : null;
+    decoder.current = service;
+    return () => {
+      service?.dispose();
+      decoder.current = null;
+    };
+  }, [mediaSource]);
+  const target =
+    hover === null || !Number.isFinite(duration)
+      ? null
+      : Math.floor((hover * duration) / 2) * 2;
+  useEffect(() => {
+    let active = true;
+    setPreview(null);
+    setPending(target !== null);
+    if (target === null) return;
+    const timer = setTimeout(() => {
+      const service = decoder.current;
+      if (!service) {
+        setPending(false);
+        return;
+      }
+      service
+        .frame(target)
+        .catch(() => null)
+        .then((frame) => {
+          if (active) {
+            setPreview(frame);
+            setPending(false);
+          }
+        });
+    }, 160);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [target, mediaSource]);
   return (
     <div
       className="timeline-wrap"
@@ -70,7 +112,13 @@ export function Timeline({
           className="seek-preview"
           style={{ left: `${Math.min(94, Math.max(6, hover * 100))}%` }}
         >
-          {thumbnail && <img src={thumbnail} alt="Video poster" />}
+          {preview ? (
+            <img src={preview} alt={`Preview near ${time(target || 0)}`} />
+          ) : (
+            <span className="preview-message">
+              {pending ? "Loading preview…" : "Preview unavailable"}
+            </span>
+          )}
           <strong>{time(hover * duration)}</strong>
         </span>
       )}
@@ -444,7 +492,7 @@ export function PlayerControls({
   toggleFullscreen,
   pip,
   canPip,
-  thumbnail,
+  mediaSource,
 }: {
   playing: boolean;
   toggle: () => void;
@@ -462,7 +510,7 @@ export function PlayerControls({
   toggleFullscreen: () => void;
   pip: () => void;
   canPip: boolean;
-  thumbnail?: string;
+  mediaSource?: string;
 }) {
   return (
     <div className="player-controls">
@@ -470,7 +518,7 @@ export function PlayerControls({
         position={position}
         duration={duration}
         onSeek={seek}
-        thumbnail={thumbnail}
+        mediaSource={mediaSource}
       />
       <div className="controls-bottom">
         <div className="control-group">
@@ -1406,7 +1454,7 @@ export default function VideoPlayer({
           toggleFullscreen={toggleFullscreen}
           pip={pip}
           canPip={!!document.pictureInPictureEnabled}
-          thumbnail={entry.thumbnail}
+          mediaSource={src}
         />
       </div>
       <div className="now-playing-info">
