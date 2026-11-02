@@ -1,3 +1,7 @@
+import { loadQueue, moveQueue } from "./lib/queue";
+import { PlaybackQueue } from "./components/PlaybackQueue";
+import { canContinue, isWatched } from "./lib/playback";
+import { PlaylistVideoPicker } from "./components/PlaylistVideoPicker";
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Plus,
@@ -24,7 +28,7 @@ import type {
   TVShow,
 } from "./types";
 import type { FolderLocation } from "./lib/organization";
-import { parentPath, episodeFor } from "./lib/organization";
+import { parentPath, episodeFor, orderedEpisodes } from "./lib/organization";
 import { FolderBrowser } from "./components/FolderBrowser";
 import { TVShows, ShowEditor, EpisodeEditor } from "./components/TVShows";
 import { defaults } from "./types";
@@ -89,6 +93,8 @@ export default function App() {
     [toasts, setToasts] = useState<Notice[]>([]),
     [error, setError] = useState(""),
     [details, setDetails] = useState<VideoEntry | null>(null),
+    [queueIds, setQueueIds] = useState<string[]>(loadQueue),
+    [blinds, setBlinds] = useState(false),
     [player, setPlayer] = useState<{ id: string; file: File } | null>(null),
     [reconnect, setReconnect] = useState<VideoEntry | null>(null),
     [playlistForm, setPlaylistForm] = useState<{
@@ -96,6 +102,7 @@ export default function App() {
       playlist?: Playlist;
       video?: VideoEntry;
     } | null>(null),
+    [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null),
     [playlistName, setPlaylistName] = useState(""),
     [confirm, setConfirm] = useState<{
       title: string;
@@ -121,6 +128,13 @@ export default function App() {
       setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 6000),
     );
   }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem("cinevault.queue", JSON.stringify(queueIds));
+    } catch {
+      notify("Queue could not be saved in this browser.", true);
+    }
+  }, [queueIds, notify]);
   useEffect(() => () => toastTimers.current.forEach(clearTimeout), []);
   useEffect(() => {
     let active = true;
@@ -132,8 +146,18 @@ export default function App() {
     ])
       .then(([v, p, f, s]) => {
         if (active) {
-          entries.current = v;
-          setVideos(v);
+          const normalized = v.map((video) => {
+            if (!video.completed && isWatched(video)) {
+              const watched = { ...video, completed: true };
+              void storage
+                .saveVideo(watched)
+                .catch(() => notify("Watch status could not be saved.", true));
+              return watched;
+            }
+            return video;
+          });
+          entries.current = normalized;
+          setVideos(normalized);
           setPlaylists(p);
           setFolders(f);
           setShows(s);
@@ -633,7 +657,23 @@ export default function App() {
       setReconnect(v);
       return;
     }
+    const next = episodeFor(v, shows);
+    if (next?.episode !== undefined) {
+      videos.forEach((previous) => {
+        const old = episodeFor(previous, shows);
+        if (
+          previous.id !== v.id &&
+          old?.showId === next.showId &&
+          (old.season < next.season ||
+            (old.season === next.season &&
+              old.episode !== undefined &&
+              old.episode < next.episode!))
+        )
+          update(previous.id, { continueHidden: true });
+      });
+    }
     update(v.id, { continueHidden: false });
+    setQueueIds((previous) => previous.filter((id) => id !== v.id));
     history.pushState(
       { cinevault: { page, folder: folderLocation, playerId: v.id } },
       "",
@@ -733,7 +773,7 @@ export default function App() {
         "Hide all in-progress videos from Continue Watching. Saved resume positions and original files are kept. Playing a video again brings it back.",
       action: () => {
         entries.current
-          .filter((v) => v.position > 0 && !v.completed && !v.continueHidden)
+          .filter((v) => canContinue(v))
           .forEach((v) => update(v.id, { continueHidden: true }));
         notify("Continue Watching cleared. Resume positions kept.");
       },
@@ -774,6 +814,7 @@ export default function App() {
         entries.current = entries.current.filter((x) => x.id !== v.id);
         setVideos(entries.current);
         files.current.delete(v.id);
+        setQueueIds((previous) => previous.filter((id) => id !== v.id));
         storage
           .removeVideo(v.id)
           .catch(() => notify("Could not remove saved entry.", true));
@@ -791,8 +832,35 @@ export default function App() {
   const selectedPlaylist = page.startsWith("playlist:")
     ? playlists.find((p) => `playlist:${p.id}` === page)
     : undefined;
+  const playerEntry = player ? videos.find((v) => v.id === player.id) : null;
+  const queueVideos = queueIds.flatMap((id) => {
+    const video = videos.find((v) => v.id === id);
+    return video ? [video] : [];
+  });
+  const addQueue = (video: VideoEntry) => {
+    if (video.id === player?.id) {
+      notify("This video is already playing.");
+      return;
+    }
+    if (queueIds.includes(video.id)) {
+      notify("This video is already in the queue.");
+      return;
+    }
+    setQueueIds((previous) =>
+      previous.includes(video.id) ? previous : [...previous, video.id],
+    );
+    if (!player) notify("Added to queue.");
+  };
+  const episodeOrder = playerEntry
+    ? orderedEpisodes(playerEntry, videos, shows)
+    : [];
+  const episodeIndex = episodeOrder.findIndex((v) => v.id === player?.id);
+  const nextVideo =
+    queueVideos[0] ||
+    (episodeIndex >= 0 ? episodeOrder[episodeIndex + 1] : undefined);
   const actions: LibraryActions = {
     play,
+    queue: addQueue,
     favorite: (v) => update(v.id, { favorite: !v.favorite }),
     remove,
     details: setDetails,
@@ -840,7 +908,7 @@ export default function App() {
       : page === "Recently Played"
         ? !!v.lastPlayed
         : page === "Continue Watching"
-          ? v.position > 0 && !v.completed && !v.continueHidden
+          ? canContinue(v)
           : selectedPlaylist
             ? selectedPlaylist.videoIds.includes(v.id)
             : (page === "Home" || page === "All Videos") && !search
@@ -876,12 +944,11 @@ export default function App() {
               : b.added - a.added,
     );
   const continuing = videos
-    .filter((v) => v.position > 0 && !v.completed && !v.continueHidden)
+    .filter((v) => canContinue(v))
     .sort((a, b) => (b.lastPlayed || 0) - (a.lastPlayed || 0));
   const recent = videos
     .filter((v) => v.lastPlayed)
     .sort((a, b) => (b.lastPlayed || 0) - (a.lastPlayed || 0));
-  const playerEntry = player ? videos.find((v) => v.id === player.id) : null;
   const selectedShow = page.startsWith("show:")
     ? shows.find((s) => `show:${s.id}` === page)
     : undefined;
@@ -899,7 +966,7 @@ export default function App() {
   }, [player]);
   return (
     <div
-      className="app-shell"
+      className={`app-shell ${blinds && player ? "blinds-on" : ""}`}
       onDragEnter={(e) => {
         if (e.dataTransfer.types.includes("Files")) {
           e.preventDefault();
@@ -911,11 +978,13 @@ export default function App() {
         if (e.dataTransfer.types.includes("Files")) e.preventDefault();
       }}
       onDragLeave={(e) => {
+        if (!e.dataTransfer.types.includes("Files")) return;
         e.preventDefault();
         dragCount.current--;
         if (dragCount.current <= 0) setDragging(false);
       }}
       onDrop={(e) => {
+        if (!e.dataTransfer.types.includes("Files")) return;
         e.preventDefault();
         setDragging(false);
         dragCount.current = 0;
@@ -932,7 +1001,6 @@ export default function App() {
         open={sidebar}
         close={() => setSidebar(false)}
         createPlaylist={createPlaylist}
-        importFolder={chooseFolder}
       />
       <div className={`workspace ${prefs.compact ? "layout-compact" : ""}`}>
         <TopNavigation
@@ -991,6 +1059,7 @@ export default function App() {
                     setFolders([]);
                     setPlaylists([]);
                     setShows([]);
+                    setQueueIds([]);
                     setFolderLocation(null);
                     notify(
                       "Library and imports cleared. Original files untouched.",
@@ -1129,10 +1198,7 @@ export default function App() {
                       <ShieldCheck size={14} />A space just for you
                     </span>
                   </div>
-                  <Hero
-                    onImport={() => setImportDialog(true)}
-                    onFolder={chooseFolder}
-                  />
+                  <Hero />
                   <ContinueWatching
                     videos={continuing}
                     actions={actions}
@@ -1145,6 +1211,14 @@ export default function App() {
                 <div className="page-heading">
                   <span className="eyebrow">YOUR PERSONAL BOX OFFICE</span>
                   <h1>{selectedPlaylist?.name || page}</h1>
+                  {selectedPlaylist && (
+                    <button
+                      className="button primary"
+                      onClick={() => setEditingPlaylist(selectedPlaylist)}
+                    >
+                      <ListVideo size={17} /> Select videos
+                    </button>
+                  )}
                   <p>
                     {page === "Favorites"
                       ? "The stories you always come back to."
@@ -1509,6 +1583,18 @@ export default function App() {
           </div>
         </Modal>
       )}
+      {editingPlaylist && (
+        <PlaylistVideoPicker
+          playlist={editingPlaylist}
+          videos={videos}
+          onClose={() => setEditingPlaylist(null)}
+          onSave={(p) => {
+            savePlaylist(p);
+            setEditingPlaylist(null);
+            notify("Playlist updated.");
+          }}
+        />
+      )}
       {playlistForm && (
         <Modal
           title={
@@ -1528,6 +1614,7 @@ export default function App() {
                   <button
                     key={p.id}
                     className="menu-row playlist-choice"
+                    disabled={p.videoIds.includes(playlistForm.video!.id)}
                     onClick={() => {
                       if (!p.videoIds.includes(playlistForm.video!.id))
                         savePlaylist({
@@ -1540,7 +1627,11 @@ export default function App() {
                   >
                     <ListVideo size={18} />
                     {p.name}
-                    <span>{p.videoIds.length} videos</span>
+                    <span>
+                      {p.videoIds.includes(playlistForm.video!.id)
+                        ? "Added ✓"
+                        : `${p.videoIds.length} videos`}
+                    </span>
                   </button>
                 ))}
                 <button
@@ -1570,6 +1661,7 @@ export default function App() {
                           : [],
                       };
                   savePlaylist(p);
+                  if (!playlistForm.playlist) setEditingPlaylist(p);
                   setPlaylistForm(null);
                   notify("Playlist saved.");
                 }}
@@ -1688,34 +1780,62 @@ export default function App() {
         />
       )}
       {player && playerEntry && (
-        <VideoPlayer
-          key={player.id}
-          entry={playerEntry}
-          file={player.file}
-          prefs={prefs}
-          setPrefs={setPrefs}
-          onSave={(patch) => update(player.id, patch)}
-          onClose={() => {
-            history.replaceState(
-              { cinevault: { page, folder: folderLocation } },
-              "",
-            );
-            setPlayer(null);
-          }}
-          onFavorite={() =>
-            update(player.id, { favorite: !playerEntry.favorite })
-          }
-          notify={notify}
-        >
-          <EpisodeBrowser
+        <div className="playback-host">
+          <VideoPlayer
+            key={player.id}
             entry={playerEntry}
-            videos={videos}
-            shows={shows}
-            onPlay={(v) => {
-              if (v.id !== player.id) void play(v);
+            file={player.file}
+            prefs={prefs}
+            setPrefs={setPrefs}
+            onSave={(patch) => update(player.id, patch)}
+            blinds={blinds}
+            setBlinds={setBlinds}
+            nextVideo={nextVideo}
+            onNext={() => {
+              if (nextVideo) void play(nextVideo);
             }}
-          />
-        </VideoPlayer>
+            queueCount={queueVideos.length}
+            queuePanel={
+              <PlaybackQueue
+                videos={queueVideos}
+                library={videos}
+                currentId={player.id}
+                onAdd={addQueue}
+                onPlay={(v) => void play(v)}
+                onRemove={(id) =>
+                  setQueueIds((previous) =>
+                    previous.filter((value) => value !== id),
+                  )
+                }
+                onClear={() => setQueueIds([])}
+                onMove={(source, target) =>
+                  setQueueIds((previous) => moveQueue(previous, source, target))
+                }
+              />
+            }
+            onClose={() => {
+              history.replaceState(
+                { cinevault: { page, folder: folderLocation } },
+                "",
+              );
+              setPlayer(null);
+              setBlinds(false);
+            }}
+            onFavorite={() =>
+              update(player.id, { favorite: !playerEntry.favorite })
+            }
+            notify={notify}
+          >
+            <EpisodeBrowser
+              entry={playerEntry}
+              videos={videos}
+              shows={shows}
+              onPlay={(v) => {
+                if (v.id !== player.id) void play(v);
+              }}
+            />
+          </VideoPlayer>
+        </div>
       )}
       <ToastNotifications
         items={toasts}

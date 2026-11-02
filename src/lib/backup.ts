@@ -1,3 +1,4 @@
+import { validShortcuts } from "./shortcuts";
 import {
   defaults,
   type VideoEntry,
@@ -119,6 +120,7 @@ export function parseBackup(source: string): UserBackup {
   for (const key of Object.keys(defaults) as (keyof Preferences)[]) {
     const value = data.preferences[key];
     if (value === undefined) continue;
+    if (key === "keyboardShortcuts" && !validShortcuts(value)) return fail();
     if (typeof value !== typeof defaults[key]) return fail();
     if (typeof value === "number") number(value);
     if (typeof value === "string") string(value);

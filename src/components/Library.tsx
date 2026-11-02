@@ -1,3 +1,4 @@
+import { canContinue, isWatched } from "../lib/playback";
 import {
   Play,
   Heart,
@@ -12,6 +13,7 @@ import {
   Info,
   ImagePlus,
   ListPlus,
+  ListVideo,
   Trash2,
   X,
   Tv,
@@ -20,13 +22,7 @@ import { useState, useRef, memo } from "react";
 import type { VideoEntry, Playlist } from "../types";
 import { time, size, title, resolution } from "../lib/media";
 import { EmptyState, Modal, SectionHeading } from "./UI";
-export function Hero({
-  onImport,
-  onFolder,
-}: {
-  onImport: () => void;
-  onFolder: () => void;
-}) {
+export function Hero() {
   return (
     <section className="hero">
       <div className="hero-art" aria-hidden="true">
@@ -51,16 +47,6 @@ export function Hero({
           All your stories, in one beautiful place.
           <br />A little more cinema. A lot more you.
         </p>
-        <div className="hero-actions">
-          <button className="button primary" onClick={onFolder}>
-            <FolderOpen size={17} />
-            Add a video folder
-          </button>
-          <button className="button glass" onClick={onImport}>
-            <Upload size={16} />
-            Import files
-          </button>
-        </div>
         <div className="hero-note">
           <span className="check-circle">
             <Check size={10} />
@@ -84,6 +70,7 @@ export interface LibraryActions {
   remove: (v: VideoEntry) => void;
   details: (v: VideoEntry) => void;
   playlist: (v: VideoEntry) => void;
+  queue?: (v: VideoEntry) => void;
   customThumbnail: (v: VideoEntry, file: File) => void;
   removeFromPlaylist?: (v: VideoEntry) => void;
   removeContinue?: (v: VideoEntry) => void;
@@ -97,6 +84,10 @@ export const VideoCard = memo(function VideoCard({
   actions: LibraryActions;
 }) {
   const [menu, setMenu] = useState(false);
+  const [menuPlacement, setMenuPlacement] = useState({
+    up: false,
+    height: 420,
+  });
   const thumb = useRef<HTMLInputElement>(null);
   const progress = v.duration
     ? Math.min(100, (v.position / v.duration) * 100)
@@ -134,7 +125,7 @@ export const VideoCard = memo(function VideoCard({
         <span className="duration-badge">
           {v.duration ? time(v.duration) : v.format.toUpperCase()}
         </span>
-        {v.completed && (
+        {isWatched(v) && (
           <span className="completed-badge">
             <Check size={12} />
             Watched
@@ -174,7 +165,7 @@ export const VideoCard = memo(function VideoCard({
           <span>{v.format.toUpperCase()}</span>
           <i />
           <span>{size(v.size)}</span>
-          {v.position > 0 && !v.completed && (
+          {v.position > 0 && !isWatched(v) && (
             <>
               <i />
               <span>{time(Math.max(0, v.duration - v.position))} left</span>
@@ -186,7 +177,17 @@ export const VideoCard = memo(function VideoCard({
             className="icon-button"
             aria-label={`Options for ${v.name}`}
             aria-expanded={menu}
-            onClick={() => setMenu(!menu)}
+            onClick={(event) => {
+              const rect = event.currentTarget.getBoundingClientRect();
+              const above = rect.top - 16,
+                below = window.innerHeight - rect.bottom - 16;
+              const up = below < 420 && above > below;
+              setMenuPlacement({
+                up,
+                height: Math.max(120, up ? above : below),
+              });
+              setMenu(!menu);
+            }}
           >
             <MoreHorizontal size={19} />
           </button>
@@ -197,7 +198,42 @@ export const VideoCard = memo(function VideoCard({
                 aria-label="Close video options"
                 onClick={() => setMenu(false)}
               />
-              <div className="dropdown">
+              <div
+                className={`dropdown ${menuPlacement.up ? "opens-up" : ""}`}
+                style={{ maxHeight: menuPlacement.height }}
+              >
+                <span className="menu-group-label">VIDEO</span>
+                <button
+                  onClick={() => {
+                    actions.details(v);
+                    setMenu(false);
+                  }}
+                >
+                  <Info size={16} />
+                  Video details
+                </button>
+                <button
+                  className="menu-primary"
+                  onClick={() => {
+                    actions.playlist(v);
+                    setMenu(false);
+                  }}
+                >
+                  <ListPlus size={16} />
+                  Add to playlist
+                </button>
+                {actions.queue && (
+                  <button
+                    onClick={() => {
+                      actions.queue?.(v);
+                      setMenu(false);
+                    }}
+                  >
+                    <ListVideo size={16} />
+                    Add to queue
+                  </button>
+                )}
+                <span className="menu-group-label">ORGANIZE</span>
                 {actions.organizeEpisode && (
                   <button
                     onClick={() => {
@@ -209,38 +245,6 @@ export const VideoCard = memo(function VideoCard({
                     {v.showId ? "Edit TV episode" : "Organize as TV episode"}
                   </button>
                 )}
-                {actions.removeContinue &&
-                  v.position > 0 &&
-                  !v.completed &&
-                  !v.continueHidden && (
-                    <button
-                      onClick={() => {
-                        actions.removeContinue?.(v);
-                        setMenu(false);
-                      }}
-                    >
-                      <X size={15} />
-                      Remove from Continue Watching
-                    </button>
-                  )}
-                <button
-                  onClick={() => {
-                    actions.details(v);
-                    setMenu(false);
-                  }}
-                >
-                  <Info size={15} />
-                  Video details
-                </button>
-                <button
-                  onClick={() => {
-                    actions.playlist(v);
-                    setMenu(false);
-                  }}
-                >
-                  <ListPlus size={15} />
-                  Add to playlist
-                </button>
                 <button
                   onClick={() => {
                     thumb.current?.click();
@@ -250,6 +254,18 @@ export const VideoCard = memo(function VideoCard({
                   <ImagePlus size={15} />
                   Custom thumbnail
                 </button>
+                <span className="menu-group-label">REMOVE</span>
+                {actions.removeContinue && canContinue(v) && (
+                  <button
+                    onClick={() => {
+                      actions.removeContinue?.(v);
+                      setMenu(false);
+                    }}
+                  >
+                    <X size={15} />
+                    Remove from Continue Watching
+                  </button>
+                )}
                 {actions.removeFromPlaylist && (
                   <button
                     onClick={() => {
@@ -338,7 +354,7 @@ export function VideoList({
                 {v.sourceHeight || v.height
                   ? resolution(v)
                   : "Ready to inspect"}
-                {v.completed
+                {isWatched(v)
                   ? " · Watched"
                   : v.position > 0
                     ? ` · ${time(v.position)} watched`
@@ -361,7 +377,7 @@ export function VideoList({
             )}
             {actions.removeContinue &&
               v.position > 0 &&
-              !v.completed &&
+              !isWatched(v) &&
               !v.continueHidden && (
                 <button
                   className="icon-button"
@@ -576,12 +592,6 @@ export function VideoLibrary({
         <EmptyState
           title="No videos here yet"
           description="Try another search or filter, or add videos to this collection."
-          action={
-            <button className="button subtle" onClick={onImport}>
-              <PlusIcon />
-              Import videos
-            </button>
-          }
         />
       ) : (
         <div className="library-empty">
@@ -598,15 +608,9 @@ export function VideoLibrary({
             Drop your videos here, or connect a folder to bring your collection
             together.
           </p>
-          <div>
-            <button className="button primary" onClick={onFolder}>
-              <FolderOpen size={17} />
-              Add a folder
-            </button>
-            <button className="button subtle" onClick={onImport}>
-              Browse files
-            </button>
-          </div>
+          <p className="fine-print">
+            Use Import videos above to choose files or connect a folder.
+          </p>
           <span className="format-hint">
             MP4 <i /> MKV <i /> MOV <i /> WEBM <span>and more</span>
           </span>
@@ -710,7 +714,7 @@ export function VideoDetails({
                 ? new Date(v.lastPlayed).toLocaleString()
                 : "Not played yet",
             ],
-            ["Playback", v.completed ? "Watched" : time(v.position)],
+            ["Playback", isWatched(v) ? "Watched" : time(v.position)],
             [
               "Access",
               v.handle ? "Linked file handle" : "Reconnect file after reload",

@@ -1,3 +1,4 @@
+import { validShortcuts } from "./shortcuts";
 import type {
   VideoEntry,
   Playlist,
@@ -105,9 +106,15 @@ export const storage = {
 };
 export function loadPreferences(): Preferences {
   try {
+    const stored = JSON.parse(
+      localStorage.getItem("cinevault.preferences") || "{}",
+    );
     return {
       ...defaults,
-      ...JSON.parse(localStorage.getItem("cinevault.preferences") || "{}"),
+      ...stored,
+      keyboardShortcuts: validShortcuts(stored.keyboardShortcuts)
+        ? stored.keyboardShortcuts
+        : {},
     };
   } catch {
     return defaults;

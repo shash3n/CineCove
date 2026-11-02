@@ -45,8 +45,11 @@ export interface Preferences {
   speed: number;
   volume: number;
   autoResume: boolean;
+  autoNext: boolean;
   thumbnails: boolean;
   sort: string;
+  keyboardShortcuts: Record<string, string>;
+  captionsEnabled: boolean;
   subtitleSize: number;
   subtitleColor: string;
   subtitleBackground: boolean;
@@ -66,8 +69,11 @@ export const defaults: Preferences = {
   speed: 1,
   volume: 0.8,
   autoResume: true,
+  autoNext: true,
   thumbnails: true,
   sort: "added",
+  keyboardShortcuts: {},
+  captionsEnabled: true,
   subtitleSize: 24,
   subtitleColor: "#ffffff",
   subtitleBackground: true,

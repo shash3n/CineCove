@@ -1,3 +1,7 @@
+import { createPortal } from "react-dom";
+import { KeyboardShortcuts } from "./KeyboardShortcuts";
+import { shortcutDefaults, shortcutKey, keyLabel } from "../lib/shortcuts";
+import { isWatched, WATCHED_THRESHOLD } from "../lib/playback";
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
   ArrowLeft,
@@ -26,6 +30,8 @@ import {
   Upload,
   Monitor,
   SlidersHorizontal,
+  Blinds,
+  ListVideo,
 } from "lucide-react";
 import type { VideoEntry, Preferences, Cue, AudioTrack } from "../types";
 import {
@@ -153,18 +159,20 @@ export function VolumeControl({
   muted,
   setVolume,
   toggleMute,
+  muteKey = "m",
 }: {
   volume: number;
   muted: boolean;
   setVolume: (v: number) => void;
   toggleMute: () => void;
+  muteKey?: string;
 }) {
   return (
     <div className="volume-control">
       <button
         className="player-button"
         onClick={toggleMute}
-        aria-label={muted ? "Unmute (M)" : "Mute (M)"}
+        aria-label={`${muted ? "Unmute" : "Mute"} (${keyLabel(muteKey)})`}
       >
         {muted || !volume ? <VolumeX size={21} /> : <Volume2 size={21} />}
       </button>
@@ -501,6 +509,14 @@ export function PlayerControls({
   pip,
   canPip,
   mediaSource,
+  shortcuts = {},
+  autoNext,
+  setAutoNext,
+  blinds,
+  toggleBlinds,
+  queueCount,
+  nextVideo,
+  onNext,
 }: {
   playing: boolean;
   toggle: () => void;
@@ -519,7 +535,16 @@ export function PlayerControls({
   pip: () => void;
   canPip: boolean;
   mediaSource?: string;
+  shortcuts?: Record<string, string>;
+  autoNext: boolean;
+  setAutoNext: () => void;
+  blinds: boolean;
+  toggleBlinds: () => void;
+  queueCount: number;
+  nextVideo?: VideoEntry;
+  onNext: () => void;
 }) {
+  const keys = { ...shortcutDefaults, ...shortcuts };
   return (
     <div className="player-controls">
       <Timeline
@@ -532,7 +557,7 @@ export function PlayerControls({
         <div className="control-group">
           <button
             className="player-button main-play"
-            aria-label={playing ? "Pause (Space)" : "Play (Space)"}
+            aria-label={`${playing ? "Pause" : "Play"} (${keyLabel(keys.play)})`}
             onClick={toggle}
           >
             {playing ? (
@@ -543,7 +568,7 @@ export function PlayerControls({
           </button>
           <button
             className="player-button"
-            aria-label="Rewind 10 seconds (J)"
+            aria-label={`Rewind 10 seconds (${keyLabel(keys.backLarge)})`}
             onClick={() => seek(position - 10)}
           >
             <RotateCcw size={21} />
@@ -551,7 +576,7 @@ export function PlayerControls({
           </button>
           <button
             className="player-button"
-            aria-label="Forward 10 seconds (L)"
+            aria-label={`Forward 10 seconds (${keyLabel(keys.forwardLarge)})`}
             onClick={() => seek(position + 10)}
           >
             <RotateCw size={21} />
@@ -562,6 +587,7 @@ export function PlayerControls({
             muted={muted}
             setVolume={setVolume}
             toggleMute={toggleMute}
+            muteKey={keys.mute}
           />
           <span className="player-time">
             {time(position)}
@@ -569,7 +595,52 @@ export function PlayerControls({
             <span>{time(duration)}</span>
           </span>
         </div>
-        <div className="control-group">
+        <div className="control-group player-extra-controls">
+          <button
+            className="player-button"
+            aria-label="Play next video"
+            disabled={!nextVideo}
+            title={
+              nextVideo
+                ? `Play next: ${title(nextVideo.name)}`
+                : "No next video"
+            }
+            onClick={onNext}
+          >
+            <SkipForward size={20} />
+          </button>
+          <button
+            className={`player-button ${autoNext ? "active" : ""}`}
+            role="switch"
+            aria-checked={autoNext}
+            aria-label="Auto-next"
+            title={`Auto-next ${autoNext ? "on" : "off"}`}
+            onClick={setAutoNext}
+          >
+            <span className="auto-next-icon">
+              <SkipForward size={17} />
+              <span className={`auto-next-dot ${autoNext ? "on" : ""}`} />
+            </span>
+          </button>
+          <button
+            className={`player-button ${blinds ? "active" : ""}`}
+            aria-label="Blinds mode"
+            aria-pressed={blinds}
+            title="Blinds mode"
+            onClick={toggleBlinds}
+          >
+            <Blinds size={20} />
+          </button>
+          <button
+            className={`player-button queue-control ${menu === "queue" ? "active" : ""}`}
+            aria-label={`Playback queue (${queueCount})`}
+            aria-expanded={menu === "queue"}
+            title="Playback queue"
+            onClick={() => setMenu(menu === "queue" ? null : "queue")}
+          >
+            <ListVideo size={21} />
+            {queueCount > 0 && <small>{queueCount}</small>}
+          </button>
           <button
             className={`player-button speed-button ${menu === "speed" ? "active" : ""}`}
             title="Playback speed"
@@ -610,7 +681,7 @@ export function PlayerControls({
           )}
           <button
             className="player-button"
-            aria-label="Toggle fullscreen (F)"
+            aria-label={`Toggle fullscreen (${keyLabel(keys.fullscreen)})`}
             onClick={toggleFullscreen}
           >
             {fullscreen ? <Minimize size={22} /> : <Maximize size={22} />}
@@ -630,6 +701,12 @@ export default function VideoPlayer({
   onFavorite,
   notify,
   children,
+  blinds,
+  setBlinds,
+  nextVideo,
+  onNext,
+  queueCount,
+  queuePanel,
 }: {
   entry: VideoEntry;
   file: File;
@@ -640,6 +717,12 @@ export default function VideoPlayer({
   onFavorite: () => void;
   notify: (message: string, error?: boolean) => void;
   children?: React.ReactNode;
+  blinds: boolean;
+  setBlinds: (enabled: boolean) => void;
+  nextVideo?: VideoEntry;
+  onNext: () => void;
+  queueCount: number;
+  queuePanel: React.ReactNode;
 }) {
   const video = useRef<HTMLVideoElement>(null),
     stage = useRef<HTMLDivElement>(null),
@@ -647,11 +730,12 @@ export default function VideoPlayer({
     subtitleInput = useRef<HTMLInputElement>(null),
     lastSave = useRef(0),
     alive = useRef(true),
-    originalResume = useRef(entry.completed ? 0 : entry.position),
-    pendingStart = useRef(true);
+    originalResume = useRef(isWatched(entry) ? 0 : entry.position),
+    pendingStart = useRef(true),
+    lastWatched = useRef(isWatched(entry));
   const embeddedService = useRef<EmbeddedMediaService | null>(null);
-  const callbacks = useRef({ onSave, onClose, notify, prefs });
-  callbacks.current = { onSave, onClose, notify, prefs };
+  const callbacks = useRef({ onSave, onClose, notify, prefs, onNext });
+  callbacks.current = { onSave, onClose, notify, prefs, onNext };
   const [src, setSrc] = useState(""),
     [playing, setPlaying] = useState(false),
     [position, setPosition] = useState(0),
@@ -659,7 +743,7 @@ export default function VideoPlayer({
     [volume, setVolumeState] = useState(prefs.volume),
     [muted, setMuted] = useState(false),
     [speed, setSpeedState] = useState(entry.speed || prefs.speed),
-    [fullscreen, setFullscreen] = useState(false),
+    [fullscreen, setFullscreen] = useState(!!document.fullscreenElement),
     [visible, setVisible] = useState(true),
     [menu, setMenu] = useState<string | null>(null),
     [error, setError] = useState(""),
@@ -690,7 +774,17 @@ export default function VideoPlayer({
     ),
     [subtitleBusy, setSubtitleBusy] = useState(false),
     [embeddedSubtitle, setEmbeddedSubtitle] = useState<number | null>(null);
+  const shortcutActions = useRef({ captions: () => {} });
   const subtitleRequest = useRef(0);
+  const subtitleChosen = useRef(false),
+    audioChosen = useRef(false);
+  const autoSubtitle = useRef(false),
+    autoAudio = useRef(false);
+  const [metadataReady, setMetadataReady] = useState(false);
+  const rememberCaptions = (enabled: boolean) => {
+    subtitleChosen.current = true;
+    setPrefs({ ...callbacks.current.prefs, captionsEnabled: enabled });
+  };
   const segmentAudio = useSegmentAudio(
     video,
     embeddedService,
@@ -729,7 +823,11 @@ export default function VideoPlayer({
       engine.dispose();
     };
   }, [file]);
-  const loadEmbeddedSubtitle = async (track: EmbeddedTrack) => {
+  const loadEmbeddedSubtitle = async (
+    track: EmbeddedTrack,
+    automatic = false,
+  ) => {
+    if (!automatic) rememberCaptions(true);
     const request = ++subtitleRequest.current;
     setSubtitleBusy(true);
     try {
@@ -757,6 +855,12 @@ export default function VideoPlayer({
     segmentAudio.restore();
     embeddedService.current?.dispose();
   };
+  const [resumeHeld, setResumeHeld] = useState(false);
+  useEffect(() => {
+    if (!resumeNote || !metadataReady || waiting || error || resumeHeld) return;
+    const timer = setTimeout(() => setResumeNote(false), 6000);
+    return () => clearTimeout(timer);
+  }, [resumeNote, metadataReady, waiting, error, resumeHeld]);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
@@ -770,7 +874,7 @@ export default function VideoPlayer({
         height: v.videoHeight,
         lastPlayed: Date.now(),
         speed: v.playbackRate,
-        completed: v.currentTime / v.duration >= 0.95,
+        completed: v.currentTime / v.duration >= WATCHED_THRESHOLD,
       });
   }, []);
   useEffect(() => {
@@ -851,7 +955,10 @@ export default function VideoPlayer({
   const toggleFullscreen = useCallback(() => {
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     else if (stage.current?.requestFullscreen)
-      stage.current
+      (
+        (stage.current.closest(".playback-host") as HTMLElement) ||
+        stage.current
+      )
         .requestFullscreen()
         .catch(() =>
           callbacks.current.notify(
@@ -869,6 +976,7 @@ export default function VideoPlayer({
   }, []);
   useEffect(() => {
     const f = () => setFullscreen(!!document.fullscreenElement);
+    f();
     document.addEventListener("fullscreenchange", f);
     return () => document.removeEventListener("fullscreenchange", f);
   }, []);
@@ -891,48 +999,65 @@ export default function VideoPlayer({
       const v = video.current;
       if (!v) return;
       let handled = true;
-      switch (e.key.toLowerCase()) {
-        case " ":
-        case "k":
+      const bindings = {
+        ...shortcutDefaults,
+        ...callbacks.current.prefs.keyboardShortcuts,
+      };
+      const pressed = shortcutKey(e);
+      const action = Object.keys(bindings).find(
+        (action) => bindings[action as keyof typeof bindings] === pressed,
+      );
+      switch (e.key === "Escape" ? "escape" : action) {
+        case "play":
+        case "playAlt":
           toggle();
           break;
-        case "arrowleft":
+        case "back":
           seek(v.currentTime - 5);
           break;
-        case "arrowright":
+        case "forward":
           seek(v.currentTime + 5);
           break;
-        case "j":
+        case "backLarge":
           seek(v.currentTime - 10);
           break;
-        case "l":
+        case "forwardLarge":
           seek(v.currentTime + 10);
           break;
-        case "arrowup":
+        case "volumeUp":
           changeVolume(v.volume + 0.05);
           break;
-        case "arrowdown":
+        case "volumeDown":
           changeVolume(v.volume - 0.05);
           break;
-        case "m":
+        case "mute":
           setMuted((x) => !x);
           break;
-        case "f":
+        case "fullscreen":
           toggleFullscreen();
           break;
-        case "home":
+        case "start":
           seek(0);
           break;
         case "end":
           seek(v.duration);
           break;
-        case ",":
+        case "frameBack":
           v.pause();
           seek(v.currentTime - 1 / 30);
           break;
-        case ".":
+        case "frameForward":
           v.pause();
           seek(v.currentTime + 1 / 30);
+          break;
+        case "audio":
+          setMenu((current) => (current === "audio" ? null : "audio"));
+          break;
+        case "captions":
+          if (!e.repeat) shortcutActions.current.captions();
+          break;
+        case "help":
+          setHints(true);
           break;
         case "escape":
           if (menu) setMenu(null);
@@ -959,14 +1084,11 @@ export default function VideoPlayer({
       const ts = Array.from(v.textTracks).filter(
         (t) => t.kind === "subtitles" || t.kind === "captions",
       );
+      if (!callbacks.current.prefs.captionsEnabled)
+        ts.forEach((track) => {
+          track.mode = "disabled";
+        });
       setTracks(ts);
-      const wanted = ts.findIndex(
-        (t) => t.language === callbacks.current.prefs.subtitleLanguage,
-      );
-      if (wanted >= 0 && trackIndex < 0) {
-        ts.forEach((t, i) => (t.mode = i === wanted ? "showing" : "disabled"));
-        setTrackIndex(wanted);
-      }
       const a = (v as any).audioTracks;
       setAudio(
         a
@@ -987,6 +1109,55 @@ export default function VideoPlayer({
       v.removeEventListener("loadeddata", refresh);
     };
   }, [src]);
+  useEffect(() => {
+    if (!probe || !metadataReady) return;
+    if (!autoAudio.current && !audioChosen.current) {
+      autoAudio.current = true;
+      const audioTracks = probe.tracks.filter((t) => t.type === "audio");
+      const preferred = audioTracks.find((t) => t.default && t.supported);
+      if (preferred) {
+        const native = (video.current as any)?.audioTracks;
+        const index = audioTracks.indexOf(preferred);
+        if (native?.length > index) {
+          for (let i = 0; i < native.length; i++)
+            native[i].enabled = i === index;
+          setAudio(
+            Array.from(native as ArrayLike<AudioTrack>).map((t, i) => ({
+              id: String(i),
+              label: t.label,
+              language: t.language,
+              enabled: i === index,
+            })),
+          );
+        } else segmentAudio.select(preferred);
+      }
+    }
+    if (!autoSubtitle.current && !subtitleChosen.current) {
+      autoSubtitle.current = true;
+      if (!callbacks.current.prefs.captionsEnabled) {
+        selectTrack(-1);
+        return;
+      }
+      const preferred =
+        probe.tracks.find(
+          (t) => t.type === "subtitle" && t.default && t.supported,
+        ) ||
+        probe.tracks.find(
+          (t) =>
+            t.type === "subtitle" &&
+            t.supported &&
+            t.language === callbacks.current.prefs.subtitleLanguage,
+        );
+      if (preferred) void loadEmbeddedSubtitle(preferred, true);
+      else {
+        const native = tracks.findIndex((t) => t.mode === "showing");
+        const language = tracks.findIndex(
+          (t) => t.language === callbacks.current.prefs.subtitleLanguage,
+        );
+        selectTrack(native >= 0 ? native : language);
+      }
+    }
+  }, [probe, metadataReady, tracks]);
   useEffect(() => {
     const applyPosition = () => {
       for (const track of tracks)
@@ -1013,6 +1184,37 @@ export default function VideoPlayer({
     tracks.forEach((t, i) => (t.mode = i === index ? "showing" : "disabled"));
     setTrackIndex(index);
   };
+  shortcutActions.current.captions = () => {
+    const enabled = subEnabled || trackIndex >= 0;
+    rememberCaptions(!enabled);
+    subtitleRequest.current++;
+    setSubtitleBusy(false);
+    selectTrack(-1);
+    setSubEnabled(false);
+    if (enabled) return;
+    if (cues.length) {
+      setSubEnabled(true);
+      return;
+    }
+    if (tracks.length) {
+      const preferred = tracks.findIndex(
+        (t) => t.language === prefs.subtitleLanguage,
+      );
+      selectTrack(preferred >= 0 ? preferred : 0);
+      return;
+    }
+    const available =
+      probe?.tracks.filter((t) => t.type === "subtitle" && t.supported) || [];
+    const preferred =
+      available.find((t) => t.default) ||
+      available.find((t) => t.language === prefs.subtitleLanguage) ||
+      available[0];
+    if (preferred) void loadEmbeddedSubtitle(preferred);
+    else
+      notify(
+        "No supported subtitles found. Load a subtitle file from the Subtitles menu.",
+      );
+  };
   const loadSub = async (f: File) => {
     try {
       if (f.size > 5 * 1024 * 1024)
@@ -1021,6 +1223,7 @@ export default function VideoPlayer({
       setCues(parsed);
       setSubtitleName(f.name);
       setEmbeddedSubtitle(null);
+      rememberCaptions(true);
       setSubEnabled(true);
       selectTrack(-1);
       setMenu(null);
@@ -1093,11 +1296,18 @@ export default function VideoPlayer({
   };
   return (
     <div
-      className="player-shell"
+      className={`player-shell ${blinds && !fullscreen ? "blinds-active" : ""}`}
       role="dialog"
       aria-modal="true"
       aria-label={`Playing ${entry.name}`}
     >
+      {blinds && !fullscreen && (
+        <button
+          className="blinds-backdrop"
+          aria-label="Exit blinds mode"
+          onClick={() => setBlinds(false)}
+        />
+      )}
       <header className="player-header">
         <button className="button subtle" onClick={close}>
           <ArrowLeft size={18} />
@@ -1116,12 +1326,14 @@ export default function VideoPlayer({
       </header>
       <div
         ref={stage}
-        className={`player-stage ${visible || !playing || menu ? "controls-visible" : "controls-hidden"}`}
+        className={`player-stage ${visible || !playing || menu || hints ? "controls-visible" : "controls-hidden"}`}
         onMouseMove={wake}
         onTouchStart={wake}
         onDoubleClick={(e) => {
           if (
-            !(e.target as HTMLElement).closest("button,input,.player-popover")
+            !(e.target as HTMLElement).closest(
+              "button,input,.player-popover,.modal-backdrop",
+            )
           )
             toggleFullscreen();
         }}
@@ -1141,6 +1353,7 @@ export default function VideoPlayer({
           onLoadedMetadata={() => {
             const v = video.current!;
             setDuration(v.duration);
+            setMetadataReady(true);
             setWaiting(false);
             onSave({
               duration: v.duration,
@@ -1157,7 +1370,13 @@ export default function VideoPlayer({
           onTimeUpdate={() => {
             const v = video.current!;
             setPosition(v.currentTime);
-            if (Date.now() - lastSave.current > 5000) {
+            const watched =
+              v.duration > 0 && v.currentTime / v.duration >= WATCHED_THRESHOLD;
+            if (
+              watched !== lastWatched.current ||
+              Date.now() - lastSave.current > 5000
+            ) {
+              lastWatched.current = watched;
               lastSave.current = Date.now();
               save();
             }
@@ -1170,6 +1389,7 @@ export default function VideoPlayer({
           onEnded={() => {
             setPlaying(false);
             save();
+            if (callbacks.current.prefs.autoNext) callbacks.current.onNext();
           }}
           onWaiting={() => setWaiting(true)}
           onPlaying={() => setWaiting(false)}
@@ -1205,8 +1425,24 @@ export default function VideoPlayer({
             <span>{activeCues.map((c) => c.text).join("\n")}</span>
           </div>
         )}
-        {resumeNote && !error && !showResume && (
-          <div className="resume-note">
+        {resumeNote && metadataReady && !waiting && !error && !showResume && (
+          <div
+            className="resume-note"
+            role="status"
+            onMouseEnter={() => setResumeHeld(true)}
+            onMouseLeave={() => setResumeHeld(false)}
+            onFocus={() => setResumeHeld(true)}
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget))
+                setResumeHeld(false);
+            }}
+          >
+            <span
+              key={String(resumeHeld)}
+              className="resume-countdown"
+              style={{ animationPlayState: resumeHeld ? "paused" : "running" }}
+              aria-hidden="true"
+            />
             <RefreshCw size={15} />
             <span>Resumed at {time(originalResume.current)}</span>
             <button
@@ -1325,7 +1561,9 @@ export default function VideoPlayer({
           <h2>{title(entry.name)}</h2>
         </div>
         {menu && (
-          <div className="player-popover">
+          <div
+            className={`player-popover ${menu === "queue" ? "queue-popover" : ""}`}
+          >
             <button
               className="popover-close icon-button"
               onClick={() => setMenu(null)}
@@ -1333,6 +1571,7 @@ export default function VideoPlayer({
             >
               <X size={16} />
             </button>
+            {menu === "queue" && queuePanel}
             {menu === "speed" && (
               <>
                 <h3>
@@ -1356,6 +1595,7 @@ export default function VideoPlayer({
                 name={subtitleName}
                 enabled={subEnabled}
                 setEnabled={(enabled) => {
+                  rememberCaptions(enabled);
                   if (!enabled) {
                     subtitleRequest.current++;
                     setSubtitleBusy(false);
@@ -1367,9 +1607,16 @@ export default function VideoPlayer({
                 onLoad={() => subtitleInput.current?.click()}
                 tracks={tracks}
                 selectedTrack={trackIndex}
-                onTrack={selectTrack}
+                onTrack={(index) => {
+                  if (index >= 0) {
+                    rememberCaptions(true);
+                    subtitleRequest.current++;
+                    setSubtitleBusy(false);
+                  }
+                  selectTrack(index);
+                }}
                 embedded={probe?.tracks.filter((t) => t.type === "subtitle")}
-                onEmbedded={loadEmbeddedSubtitle}
+                onEmbedded={(track) => void loadEmbeddedSubtitle(track)}
                 embeddedSelected={embeddedSubtitle}
                 inspection={inspection}
                 trackBusy={subtitleBusy}
@@ -1385,11 +1632,15 @@ export default function VideoPlayer({
                     : []
                 }
                 selectedEmbedded={segmentAudio.active}
-                onEmbedded={segmentAudio.select}
+                onEmbedded={(track) => {
+                  audioChosen.current = true;
+                  segmentAudio.select(track);
+                }}
                 inspection={inspection}
                 loading={segmentAudio.loading}
                 onCancel={cancelTracks}
                 onSelect={(id) => {
+                  audioChosen.current = true;
                   const a = (video.current as any)?.audioTracks;
                   if (a) {
                     for (let i = 0; i < a.length; i++)
@@ -1485,6 +1736,17 @@ export default function VideoPlayer({
           pip={pip}
           canPip={!!document.pictureInPictureEnabled}
           mediaSource={src}
+          shortcuts={prefs.keyboardShortcuts}
+          autoNext={prefs.autoNext}
+          setAutoNext={() => setPrefs({ ...prefs, autoNext: !prefs.autoNext })}
+          blinds={blinds}
+          toggleBlinds={() => setBlinds(!blinds)}
+          queueCount={queueCount}
+          nextVideo={nextVideo}
+          onNext={() => {
+            save();
+            onNext();
+          }}
         />
       </div>
       <div className="now-playing-info">
@@ -1526,41 +1788,15 @@ export default function VideoPlayer({
           e.target.value = "";
         }}
       />
-      {hints && (
-        <div className="shortcut-backdrop" onClick={() => setHints(false)}>
-          <div className="shortcut-dialog" onClick={(e) => e.stopPropagation()}>
-            <header>
-              <h2>Stay in the story.</h2>
-              <button
-                className="icon-button"
-                onClick={() => setHints(false)}
-                aria-label="Close shortcuts"
-              >
-                <X />
-              </button>
-            </header>
-            <p>Keep your hands on the keyboard.</p>
-            <div className="shortcut-grid">
-              {[
-                ["Space / K", "Play / pause"],
-                ["← / →", "Seek 5 seconds"],
-                ["J / L", "Seek 10 seconds"],
-                ["↑ / ↓", "Adjust volume"],
-                ["M", "Mute / unmute"],
-                ["F", "Fullscreen"],
-                ["Escape", "Exit fullscreen / player"],
-                ["Home / End", "Beginning / end"],
-                [", / .", "Approximate frame step"],
-              ].map(([k, d]) => (
-                <div key={k}>
-                  <span>{d}</span>
-                  <kbd>{k}</kbd>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {hints &&
+        createPortal(
+          <KeyboardShortcuts
+            prefs={prefs}
+            setPrefs={setPrefs}
+            onClose={() => setHints(false)}
+          />,
+          stage.current || document.body,
+        )}
     </div>
   );
 }

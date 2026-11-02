@@ -59,7 +59,7 @@ To reproduce these captures, start `npm run dev`, then run `node scripts/capture
 - Browse root folders and subfolders with breadcrumbs and folder-first navigation.
 - Search filenames; filter by format and resolution; sort by name, date, duration, or size.
 - Switch between grid and list views, inspect video details, and set custom thumbnails.
-- Save favorites and create, rename, edit, or delete playlists.
+- Save favorites and create, rename, edit, or delete playlists. Select videos in bulk with searchable checkboxes.
 - Connected folders auto-sync on launch, every 30 seconds while visible, and when returning to the app. Originals are never deleted when you remove library entries; removed entries stay excluded from automatic scans.
 - Export and import user data: watch history, favorites, playlists, shows, metadata, thumbnails, and preferences.
 
@@ -78,12 +78,17 @@ To reproduce these captures, start `npm run dev`, then run `node scripts/capture
 - Find recently played videos and manage the Continue Watching collection.
 - Control seeking, volume, mute, fullscreen, picture-in-picture (where supported), approximate frame stepping, and playback speed from **0.25× to 3×**.
 - Use auto-hiding player controls, keyboard shortcuts, and a cached-image seek preview.
-- Videos at 95% completion are marked watched and restart on their next opening.
+- Videos at 85% completion are marked watched, excluded from Continue Watching, and restart on their next opening. Advancing to a later TV episode hides earlier episodes from Continue Watching while keeping their saved positions.
+- Enable or disable auto-next in the player. Queued videos play first, then the next TV episode across seasons; fullscreen stays active between videos.
+- Add videos to the playback queue from a library menu or the player. Drag to reorder, use the accessible move buttons, remove items, or clear the queue. Queue order and auto-next preferences are saved locally.
+- Use the blinds icon to blacken everything outside the player without entering fullscreen. Click outside the player to restore the page.
+- The right-side resume toast dismisses after six seconds; hovering or focusing its controls pauses dismissal.
+- Open keyboard shortcuts with **?**, use **A** for audio tracks and **C** to toggle captions, or assign individual keys in the fullscreen-compatible shortcut editor. Duplicate bindings are rejected; **Reset shortcuts** restores defaults.
 
 ### Subtitles and audio
 
 - Load external **SRT, WebVTT, ASS, or SSA** subtitles.
-- Inspect embedded tracks locally and extract supported text subtitles as WebVTT.
+- Inspect embedded tracks locally and extract supported text subtitles as WebVTT. Prefer default audio and subtitle tracks and remember whether captions are enabled.
 - Adjust subtitle font, size, text color and opacity, edges, background, top/bottom placement, distance from the chosen edge (0–40%), and timing offset (±120 seconds). The default edge distance is 4%; height is controlled by a precise slider in Settings and the player subtitle menu.
 - Save subtitle appearance and language preferences locally; restore defaults from Settings or the player.
 - Switch native audio tracks where the browser supports them.

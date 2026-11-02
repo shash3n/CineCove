@@ -305,6 +305,12 @@ test("MKV exposes and plays embedded subtitle and alternate audio tracks locally
       "language=spa",
       "-metadata:s:s:0",
       "language=eng",
+      "-disposition:a:0",
+      "0",
+      "-disposition:a:1",
+      "default",
+      "-disposition:s:0",
+      "default",
       "fixture.mkv",
     ]);
     if (code) throw new Error("Fixture generation failed");
@@ -335,11 +341,28 @@ test("MKV exposes and plays embedded subtitle and alternate audio tracks locally
     v.pause();
     v.currentTime = 1;
   });
-  await page.getByRole("button", { name: "Subtitles", exact: true }).click();
-  await page.getByRole("button", { name: /eng · SUBRIP/ }).click();
+  // Defaults are applied without opening a playback menu.
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as any).__alternateAudio.readyState),
+    )
+    .toBeGreaterThanOrEqual(2);
+  await expect(page.locator("video")).toHaveJSProperty("muted", true);
+
   await expect(page.locator(".subtitle-overlay")).toHaveText(
     "Embedded movie subtitles.",
   );
+  await page.getByRole("button", { name: "Subtitles", exact: true }).click();
+  await page.getByRole("button", { name: "Off", exact: true }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          JSON.parse(localStorage.getItem("cinevault.preferences")!)
+            .captionsEnabled,
+      ),
+    )
+    .toBe(false);
   await page.getByRole("button", { name: "Close playback menu" }).click();
   await page.getByRole("button", { name: "Audio tracks", exact: true }).click();
   await page.getByRole("button", { name: /spa · AAC/ }).click();
@@ -388,6 +411,29 @@ test("MKV exposes and plays embedded subtitle and alternate audio tracks locally
       page.locator("video").evaluate((v: HTMLVideoElement) => v.muted),
     )
     .toBe(false);
+  await page.locator("video").evaluate((v: HTMLVideoElement) => {
+    v.currentTime = 6;
+    v.pause();
+  });
+  await page.getByRole("button", { name: "Back to library" }).click();
+  await page
+    .locator(".library-section")
+    .getByRole("button", { name: "Play Embedded.mkv", exact: true })
+    .click();
+  await expect(page.locator(".resume-note")).toBeVisible();
+  await page.screenshot({
+    path: "test-results/resume-toast.png",
+    animations: "disabled",
+  });
+  await page.locator("video").evaluate((v: HTMLVideoElement) => v.pause());
+  await expect(page.locator(".subtitle-overlay")).toHaveCount(0);
+  await page.getByRole("button", { name: "Subtitles", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Off", exact: true }),
+  ).toContainText("Off");
+  await page.getByRole("button", { name: "Close playback menu" }).click();
+  await page.mouse.move(0, 0);
+  await expect(page.locator(".resume-note")).toHaveCount(0, { timeout: 12000 });
   // Also verify output decoding and exact subtitle timing independently of the UI.
   const result = await page.evaluate(async (data) => {
     const module = "/src/lib/embedded.ts";

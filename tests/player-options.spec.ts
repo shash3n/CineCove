@@ -18,7 +18,7 @@ test("episode browser crosses seasons and subtitle appearance persists and reset
         duration: 100,
         width: 1920,
         height: 800,
-        position: 0,
+        position: 40,
         favorite: false,
         showId: "show",
         season: i < 3 ? 1 : 2,
@@ -57,6 +57,18 @@ test("episode browser crosses seasons and subtitle appearance persists and reset
   await expect(
     page.getByRole("dialog", { name: "Playing Episode3.mkv" }),
   ).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(async () => {
+        const module = "/src/lib/storage.ts";
+        const { storage } = await import(module);
+        return (await storage.videos())
+          .filter((v: any) => v.name !== "Episode3.mkv")
+          .every((v: any) => v.continueHidden);
+      }),
+    )
+    .toBe(true);
+
   await expect(
     page.getByRole("button", { name: "Next episode", exact: true }),
   ).toBeDisabled();

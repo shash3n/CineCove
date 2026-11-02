@@ -75,3 +75,22 @@ export function suggestedSeasons(
     .filter((x) => x !== null);
   return seasons.length ? seasons : [{ folderId: folder.id, path, season: 1 }];
 }
+
+export function orderedEpisodes(
+  entry: VideoEntry,
+  videos: VideoEntry[],
+  shows: TVShow[],
+) {
+  const current = episodeFor(entry, shows);
+  if (!current) return [];
+  return videos
+    .map((video) => ({ video, info: episodeFor(video, shows) }))
+    .filter((item) => item.info?.showId === current.showId)
+    .sort(
+      (a, b) =>
+        a.info!.season - b.info!.season ||
+        (a.info!.episode ?? 9999) - (b.info!.episode ?? 9999) ||
+        a.video.name.localeCompare(b.video.name, undefined, { numeric: true }),
+    )
+    .map((item) => item.video);
+}

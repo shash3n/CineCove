@@ -1,7 +1,8 @@
+import { isWatched } from "../lib/playback";
 import { useState } from "react";
 import { SkipBack, SkipForward, Play } from "lucide-react";
 import type { VideoEntry, TVShow } from "../types";
-import { episodeFor } from "../lib/organization";
+import { episodeFor, orderedEpisodes } from "../lib/organization";
 import { title, time } from "../lib/media";
 export function EpisodeBrowser({
   entry,
@@ -19,15 +20,10 @@ export function EpisodeBrowser({
   if (!current) return null;
   const show = shows.find((s) => s.id === current.showId);
   if (!show) return null;
-  const episodes = videos
-    .map((v) => ({ video: v, info: episodeFor(v, shows) }))
-    .filter((e) => e.info?.showId === show.id)
-    .sort(
-      (a, b) =>
-        a.info!.season - b.info!.season ||
-        (a.info!.episode ?? 9999) - (b.info!.episode ?? 9999) ||
-        a.video.name.localeCompare(b.video.name, undefined, { numeric: true }),
-    );
+  const episodes = orderedEpisodes(entry, videos, shows).map((video) => ({
+    video,
+    info: episodeFor(video, shows),
+  }));
   const index = episodes.findIndex((e) => e.video.id === entry.id),
     seasons = [...new Set(episodes.map((e) => e.info!.season))],
     season = selected ?? current.season;
@@ -98,7 +94,7 @@ export function EpisodeBrowser({
                 <small>
                   {v.id === entry.id
                     ? "Playing now"
-                    : v.completed
+                    : isWatched(v)
                       ? "Watched"
                       : v.position
                         ? `Resume at ${time(v.position)}`

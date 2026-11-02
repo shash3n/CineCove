@@ -151,6 +151,10 @@ test("library, playback, history, subtitles, playlists, settings and privacy", a
     .getByRole("button", { name: "Create playlist", exact: true })
     .click();
   await page
+    .getByRole("dialog", { name: "Select videos for Weekend cinema" })
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click();
+  await page
     .locator(".library-section")
     .getByRole("button", { name: "Options for Private.Screening.webm" })
     .click();

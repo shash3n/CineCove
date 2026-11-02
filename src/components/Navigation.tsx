@@ -35,7 +35,6 @@ export function AppSidebar({
   open,
   close,
   createPlaylist,
-  importFolder,
 }: {
   page: Page;
   setPage: (p: Page) => void;
@@ -44,7 +43,6 @@ export function AppSidebar({
   open: boolean;
   close: () => void;
   createPlaylist: () => void;
-  importFolder: () => void;
 }) {
   const go = (p: Page) => {
     setPage(p);
@@ -117,17 +115,6 @@ export function AppSidebar({
             </p>
           )}
         </div>
-        <button className="folder-card" onClick={importFolder}>
-          <span className="folder-card-icon">
-            <Folder size={20} />
-            <Plus size={11} />
-          </span>
-          <strong>A home for your movies</strong>
-          <span>Connect a folder. Settle in.</span>
-          <span className="folder-card-link">
-            Add a video folder <ArrowUpRight size={14} />
-          </span>
-        </button>
         <div className="sidebar-bottom">
           <button
             className={`nav-item ${page === "Settings" ? "active" : ""}`}
