@@ -140,37 +140,6 @@ export function PlaybackQueue({
           Your queue is empty. Add a video below or from its library menu.
         </p>
       )}
-      <label className="form-label queue-search">
-        Add videos
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search your library…"
-        />
-      </label>
-      <div className="queue-candidates">
-        {available.slice(0, 30).map((v) => (
-          <button
-            className="menu-row"
-            key={v.id}
-            onClick={() => onAdd(v)}
-            aria-label={`Queue ${title(v.name)}`}
-          >
-            <Plus size={15} />
-            <span>{title(v.name)}</span>
-          </button>
-        ))}
-        {!available.length && (
-          <p className="fine-print">
-            {search
-              ? "No matching videos available."
-              : "All available videos are queued."}
-          </p>
-        )}
-        {available.length > 30 && (
-          <p className="fine-print">Search to find more videos.</p>
-        )}
-      </div>
     </div>
   );
 }

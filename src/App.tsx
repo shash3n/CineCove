@@ -94,6 +94,7 @@ export default function App() {
     [error, setError] = useState(""),
     [details, setDetails] = useState<VideoEntry | null>(null),
     [queueIds, setQueueIds] = useState<string[]>(loadQueue),
+    [mini, setMini] = useState(false),
     [blinds, setBlinds] = useState(false),
     [player, setPlayer] = useState<{ id: string; file: File } | null>(null),
     [reconnect, setReconnect] = useState<VideoEntry | null>(null),
@@ -455,7 +456,7 @@ export default function App() {
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [player]);
+  }, [player, mini]);
   async function importEntries(
     source:
       | AsyncIterable<{
@@ -673,7 +674,6 @@ export default function App() {
       });
     }
     update(v.id, { continueHidden: false });
-    setQueueIds((previous) => previous.filter((id) => id !== v.id));
     history.pushState(
       { cinevault: { page, folder: folderLocation, playerId: v.id } },
       "",
@@ -855,9 +855,13 @@ export default function App() {
     ? orderedEpisodes(playerEntry, videos, shows)
     : [];
   const episodeIndex = episodeOrder.findIndex((v) => v.id === player?.id);
-  const nextVideo =
-    queueVideos[0] ||
-    (episodeIndex >= 0 ? episodeOrder[episodeIndex + 1] : undefined);
+  const queueIndex = queueVideos.findIndex((v) => v.id === player?.id);
+  const previousVideo = queueVideos.length
+    ? queueVideos[queueIndex - 1]
+    : episodeOrder[episodeIndex - 1];
+  const nextVideo = queueVideos.length
+    ? queueVideos[queueIndex + 1]
+    : episodeOrder[episodeIndex + 1];
   const actions: LibraryActions = {
     play,
     queue: addQueue,
@@ -957,13 +961,13 @@ export default function App() {
       ".workspace, .sidebar",
     );
     surfaces.forEach((el) => {
-      el.inert = !!player;
+      el.inert = !!player && !mini;
     });
     return () =>
       surfaces.forEach((el) => {
         el.inert = false;
       });
-  }, [player]);
+  }, [player, mini]);
   return (
     <div
       className={`app-shell ${blinds && player ? "blinds-on" : ""}`}
@@ -1780,7 +1784,7 @@ export default function App() {
         />
       )}
       {player && playerEntry && (
-        <div className="playback-host">
+        <div className={`playback-host ${mini ? "mini-host" : ""}`}>
           <VideoPlayer
             key={player.id}
             entry={playerEntry}
@@ -1788,6 +1792,16 @@ export default function App() {
             prefs={prefs}
             setPrefs={setPrefs}
             onSave={(patch) => update(player.id, patch)}
+            mini={mini}
+            onMinimize={() => {
+              setMini(true);
+              setBlinds(false);
+            }}
+            onExpand={() => setMini(false)}
+            previousVideo={previousVideo}
+            onPrevious={() => {
+              if (previousVideo) void play(previousVideo);
+            }}
             blinds={blinds}
             setBlinds={setBlinds}
             nextVideo={nextVideo}

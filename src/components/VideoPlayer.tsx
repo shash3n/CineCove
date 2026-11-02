@@ -517,6 +517,8 @@ export function PlayerControls({
   queueCount,
   nextVideo,
   onNext,
+  previousVideo,
+  onPrevious,
 }: {
   playing: boolean;
   toggle: () => void;
@@ -543,6 +545,8 @@ export function PlayerControls({
   queueCount: number;
   nextVideo?: VideoEntry;
   onNext: () => void;
+  previousVideo?: VideoEntry;
+  onPrevious: () => void;
 }) {
   const keys = { ...shortcutDefaults, ...shortcuts };
   return (
@@ -582,6 +586,31 @@ export function PlayerControls({
             <RotateCw size={21} />
             <small>10</small>
           </button>
+          {(previousVideo || nextVideo) && (
+            <>
+              <button
+                className="player-button"
+                aria-label="Play previous video"
+                disabled={!previousVideo}
+                onClick={onPrevious}
+              >
+                <SkipBack size={20} />
+              </button>{" "}
+              <button
+                className="player-button"
+                aria-label="Play next video"
+                disabled={!nextVideo}
+                title={
+                  nextVideo
+                    ? `Play next: ${title(nextVideo.name)}`
+                    : "No next video"
+                }
+                onClick={onNext}
+              >
+                <SkipForward size={20} />
+              </button>
+            </>
+          )}
           <VolumeControl
             volume={volume}
             muted={muted}
@@ -597,19 +626,6 @@ export function PlayerControls({
         </div>
         <div className="control-group player-extra-controls">
           <button
-            className="player-button"
-            aria-label="Play next video"
-            disabled={!nextVideo}
-            title={
-              nextVideo
-                ? `Play next: ${title(nextVideo.name)}`
-                : "No next video"
-            }
-            onClick={onNext}
-          >
-            <SkipForward size={20} />
-          </button>
-          <button
             className={`player-button ${autoNext ? "active" : ""}`}
             role="switch"
             aria-checked={autoNext}
@@ -617,8 +633,12 @@ export function PlayerControls({
             title={`Auto-next ${autoNext ? "on" : "off"}`}
             onClick={setAutoNext}
           >
-            <span className="auto-next-icon">
-              <SkipForward size={17} />
+            <span className={`auto-next-toggle ${autoNext ? "on" : ""}`}>
+              {autoNext ? (
+                <Play size={12} fill="currentColor" />
+              ) : (
+                <Pause size={12} fill="currentColor" />
+              )}
               <span className={`auto-next-dot ${autoNext ? "on" : ""}`} />
             </span>
           </button>
@@ -630,16 +650,6 @@ export function PlayerControls({
             onClick={toggleBlinds}
           >
             <Blinds size={20} />
-          </button>
-          <button
-            className={`player-button queue-control ${menu === "queue" ? "active" : ""}`}
-            aria-label={`Playback queue (${queueCount})`}
-            aria-expanded={menu === "queue"}
-            title="Playback queue"
-            onClick={() => setMenu(menu === "queue" ? null : "queue")}
-          >
-            <ListVideo size={21} />
-            {queueCount > 0 && <small>{queueCount}</small>}
           </button>
           <button
             className={`player-button speed-button ${menu === "speed" ? "active" : ""}`}
@@ -707,6 +717,11 @@ export default function VideoPlayer({
   onNext,
   queueCount,
   queuePanel,
+  mini,
+  onMinimize,
+  onExpand,
+  previousVideo,
+  onPrevious,
 }: {
   entry: VideoEntry;
   file: File;
@@ -723,6 +738,11 @@ export default function VideoPlayer({
   onNext: () => void;
   queueCount: number;
   queuePanel: React.ReactNode;
+  mini: boolean;
+  onMinimize: () => void;
+  onExpand: () => void;
+  previousVideo?: VideoEntry;
+  onPrevious: () => void;
 }) {
   const video = useRef<HTMLVideoElement>(null),
     stage = useRef<HTMLDivElement>(null),
@@ -880,7 +900,7 @@ export default function VideoPlayer({
   useEffect(() => {
     const previous = document.activeElement as HTMLElement;
     const prior = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    document.body.style.overflow = mini ? "" : "hidden";
     stage.current?.focus();
     const hidden = () => {
       if (document.hidden) save();
@@ -893,7 +913,7 @@ export default function VideoPlayer({
       document.removeEventListener("visibilitychange", hidden);
       window.removeEventListener("pagehide", save);
     };
-  }, [save]);
+  }, [save, mini]);
   useEffect(() => {
     alive.current = true;
     const engine = service.current;
@@ -1308,8 +1328,25 @@ export default function VideoPlayer({
           onClick={() => setBlinds(false)}
         />
       )}
+      {mini && (
+        <div className="mini-actions">
+          <button aria-label="Expand video" onClick={onExpand}>
+            <Maximize size={18} />
+          </button>
+          <button aria-label="Close video" onClick={close}>
+            <X size={18} />
+          </button>
+        </div>
+      )}
       <header className="player-header">
-        <button className="button subtle" onClick={close}>
+        <button
+          className="button subtle"
+          onClick={() => {
+            save();
+            if (document.fullscreenElement) void document.exitFullscreen();
+            onMinimize();
+          }}
+        >
           <ArrowLeft size={18} />
           <span>Back to library</span>
         </button>
@@ -1742,6 +1779,8 @@ export default function VideoPlayer({
           blinds={blinds}
           toggleBlinds={() => setBlinds(!blinds)}
           queueCount={queueCount}
+          previousVideo={previousVideo}
+          onPrevious={onPrevious}
           nextVideo={nextVideo}
           onNext={() => {
             save();
@@ -1777,6 +1816,9 @@ export default function VideoPlayer({
           <ChevronDown size={14} />
         </button>
       </div>
+      {queueCount > 0 && !mini && !fullscreen && (
+        <aside className="queue-sidebar">{queuePanel}</aside>
+      )}
       {children}
       <input
         type="file"
