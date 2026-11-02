@@ -31,6 +31,7 @@ import { defaults } from "./types";
 import { storage, loadPreferences, savePreferences } from "./lib/storage";
 import { parseBackup, serializeBackup } from "./lib/backup";
 import { scanFolder } from "./lib/folderSync";
+import { resolveVideoFile } from "./lib/fileAccess";
 import {
   accept,
   isVideo,
@@ -103,7 +104,6 @@ export default function App() {
     } | null>(null),
     [help, setHelp] = useState(false);
   const [syncStatus, setSyncStatus] = useState("Checking connected folders…");
-  const [blockedFolders, setBlockedFolders] = useState<Folder[]>([]);
   const files = useRef(new Map<string, File>()),
     entries = useRef(videos),
     importLock = useRef(false),
@@ -203,14 +203,12 @@ export default function App() {
     if (folders.length) setSyncStatus("Syncing connected folders…");
     let needsPermission = 0,
       failed = 0;
-    const blocked: Folder[] = [];
     try {
       for (const folder of folders) {
         try {
           const result = await scanFolder(folder);
           if (!result) {
             needsPermission++;
-            blocked.push(folder);
             continue;
           }
           const known = new Map(entries.current.map((v) => [v.id, v]));
@@ -220,6 +218,7 @@ export default function App() {
             const old = known.get(id);
             if (old) {
               if (
+                !old.handle ||
                 old.missing ||
                 old.folderId !== folder.id ||
                 old.relativePath !== item.relativePath
@@ -260,7 +259,6 @@ export default function App() {
           failed++;
         }
       }
-      setBlockedFolders(blocked);
       setSyncStatus(
         failed
           ? "A folder is unavailable. Check your drive or reconnect it below."
@@ -579,6 +577,11 @@ export default function App() {
         setFolders((prev) =>
           prev.map((f) => (f.id === folder!.id ? folder! : f)),
         );
+        if (reconnect && files.current.has(reconnect.id)) {
+          const entry = entries.current.find((v) => v.id === reconnect.id);
+          setReconnect(null);
+          if (entry) await play(entry);
+        }
       } catch (e) {
         if ((e as Error).name !== "AbortError")
           setError(
@@ -593,7 +596,7 @@ export default function App() {
       return;
     }
     if (!folder.handle) {
-      folderInput.current?.click();
+      await chooseFolder();
       return;
     }
     try {
@@ -609,28 +612,18 @@ export default function App() {
     }
   }
   async function play(v: VideoEntry) {
-    if (v.missing) {
-      setError(
-        "This video is no longer in its connected folder. Restore the file or reconnect its new location. Watch history is preserved.",
-      );
-      return;
-    }
     let file = files.current.get(v.id);
-    if (!file && v.handle) {
+    if (!file) {
       try {
-        const permission = await (v.handle as any).requestPermission({
-          mode: "read",
-        });
-        if (permission !== "granted") throw new Error("Permission denied");
-        file = await v.handle.getFile();
-        if (file.size !== v.size || file.lastModified !== v.modified) {
-          notify(
-            "This file has changed. Import it again to refresh its library entry.",
-            true,
-          );
-          return;
+        const resolved = await resolveVideoFile(
+          v,
+          folders.find((folder) => folder.id === v.folderId),
+        );
+        if (resolved) {
+          file = resolved.file;
+          files.current.set(v.id, file);
+          update(v.id, { handle: resolved.handle, missing: false });
         }
-        files.current.set(v.id, file);
       } catch {
         setReconnect(v);
         return;
@@ -646,6 +639,37 @@ export default function App() {
       "",
     );
     setPlayer({ id: v.id, file });
+  }
+  async function locateVideo() {
+    if (!reconnect) return;
+    if (!("showOpenFilePicker" in window)) {
+      reconnectInput.current?.click();
+      return;
+    }
+    try {
+      const [handle]: FileSystemFileHandle[] = await (
+        window as any
+      ).showOpenFilePicker({ multiple: false });
+      const file = await handle.getFile();
+      if (fileId(file) !== reconnect.id) {
+        notify(
+          "Select the original file, or import a changed video as a new entry.",
+          true,
+        );
+        return;
+      }
+      files.current.set(reconnect.id, file);
+      update(reconnect.id, { handle, missing: false });
+      const entry = reconnect;
+      setReconnect(null);
+      await play(entry);
+    } catch (e) {
+      if ((e as Error).name !== "AbortError")
+        notify(
+          "File access could not be restored. Try connecting its folder.",
+          true,
+        );
+    }
   }
   async function importFolderInput(selected: File[]) {
     if (importLock.current) {
@@ -673,6 +697,11 @@ export default function App() {
     await storage.saveFolder(folder);
     setFolders((prev) => [...prev.filter((f) => f.id !== folder.id), folder]);
     await importEntries(source, folder.id);
+    if (reconnect && files.current.has(reconnect.id)) {
+      const entry = entries.current.find((v) => v.id === reconnect.id);
+      setReconnect(null);
+      if (entry) await play(entry);
+    }
   }
   function saveShow(show: TVShow) {
     const conflict = show.folders.find((link) =>
@@ -922,26 +951,6 @@ export default function App() {
           onMenu={() => setSidebar(true)}
         />
         <main>
-          {!loading && blockedFolders.length > 0 && page !== "Settings" && (
-            <div className="folder-permission-banner" role="status">
-              <div>
-                <strong>Folder access needed</strong>
-                <p>
-                  Your browser needs permission to resume automatic sync. Video
-                  history is saved.
-                </p>
-              </div>
-              {blockedFolders.map((folder) => (
-                <button
-                  className="button subtle"
-                  key={folder.id}
-                  onClick={() => void rescan(folder)}
-                >
-                  Reconnect {folder.name}
-                </button>
-              ))}
-            </div>
-          )}
           {loading ? (
             <div className="startup">
               <LoadingIndicator text="Opening your private cinema…" />
@@ -1473,20 +1482,29 @@ export default function App() {
             <FolderOpen className="accent" size={32} />
             <h3>{reconnect.name}</h3>
             <p>
-              Your library remembers this video, but browser permission or the
-              file connection needs renewing. Select the original file to
-              continue from your saved position.
+              The saved file connection is unavailable. Connect its video folder
+              to restore access to the collection, or select the original file
+              to continue from your saved position.
             </p>
             <button
               className="button primary"
-              onClick={() => reconnectInput.current?.click()}
+              onClick={() => void locateVideo()}
             >
               <FolderOpen size={16} />
               Locate file
             </button>
+            <button
+              className="button subtle"
+              onClick={() => void chooseFolder()}
+            >
+              <FolderOpen size={16} />
+              Connect video folder
+            </button>
             <p className="fine-print">
-              For a folder library, reconnect and scan your folder from Settings
-              to restore access to multiple videos at once.
+              Chrome and Edge can remember native folder/file connections.
+              Choose “Allow on every visit” if offered. Standard file-input
+              imports cannot keep file access after a browser restart; connect
+              the folder once with a supported picker. Saved progress is kept.
             </p>
           </div>
         </Modal>

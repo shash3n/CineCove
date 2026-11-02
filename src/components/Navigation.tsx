@@ -14,6 +14,7 @@ import {
   Menu,
   ArrowUpRight,
   Tv,
+  Github,
 } from "lucide-react";
 import type { Page, Playlist } from "../types";
 import { Logo } from "./UI";
@@ -135,6 +136,17 @@ export function AppSidebar({
             <Settings size={19} />
             <span>Settings</span>
           </button>
+          <a
+            className="nav-item"
+            href="https://github.com/shash3n/CineVault"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={close}
+          >
+            <Github size={19} />
+            <span>GitHub</span>
+            <ArrowUpRight size={14} />
+          </a>
           <div className="local-status">
             <ShieldCheck size={14} />
             <span>100% local. Always private.</span>

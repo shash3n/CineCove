@@ -2427,17 +2427,6 @@ main {
   white-space: pre-line;
   text-shadow: 0 2px 3px #000c;
 }
-.folder-permission-banner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 16px;
-  border: 1px solid var(--accent);
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 24px;
-}
-.folder-permission-banner p { margin: 4px 0 0; font-size: 12px; }
 .subtitle-overlay > span {
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;

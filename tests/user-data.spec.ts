@@ -220,6 +220,16 @@ test("auto-sync refreshes added, missing and restored files while preserving his
   });
   await page.getByRole("button", { name: "Home", exact: true }).click();
   await expect(
+    page.getByText("Folder access needed", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Reconnect Movies", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.locator(".sidebar").getByRole("link", { name: "GitHub", exact: true }),
+  ).toHaveAttribute("href", "https://github.com/shash3n/CineVault");
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await expect(
     page.getByRole("button", { name: "Reconnect Movies", exact: true }),
   ).toBeVisible();
   await page
