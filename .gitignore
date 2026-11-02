@@ -8,3 +8,4 @@ playwright-report/
 .env*
 
 .vercel
+docs/remote-sharing-watch-together-plan.md
