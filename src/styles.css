@@ -5150,3 +5150,68 @@ main {
     opacity: 1;
   }
 }
+
+/* Explicit grid rows keep the media box from overflowing into episode content. */
+.player-shell {
+  animation: none;
+}
+.playback-host:not(.mini-host) {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: #0c0d10;
+}
+@media (min-width: 1001px) {
+  .player-shell:has(.queue-sidebar) {
+    grid-template-rows: 80px auto auto auto;
+  }
+  .player-shell:has(.queue-sidebar) .player-stage {
+    height: min(
+      calc((100vw - clamp(320px, 28vw, 440px) - 88px) * 0.5625),
+      calc(100dvh - 225px)
+    );
+    min-height: 0;
+    max-height: none;
+    aspect-ratio: auto;
+  }
+  .player-shell:has(.queue-sidebar) .now-playing-info {
+    grid-row: 3;
+    margin: 0;
+    max-width: none;
+  }
+  .player-shell:has(.queue-sidebar) .episode-browser {
+    grid-row: 4;
+    padding-top: 20px;
+  }
+}
+.player-shell .queue-sidebar {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+}
+.queue-heading {
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+}
+.queue-heading span,
+.queue-copy small {
+  color: var(--muted);
+}
+.queue-heading button {
+  color: var(--accent);
+}
+.queue-item:hover,
+.queue-item:focus-within {
+  background: var(--surface3);
+}
+.queue-item.current {
+  background: rgba(var(--accent-rgb), 0.16);
+  box-shadow: inset 3px 0 var(--accent);
+}
+.queue-thumb {
+  background: var(--surface3);
+}
+.queue-grip,
+.queue-row-actions {
+  color: var(--muted);
+}

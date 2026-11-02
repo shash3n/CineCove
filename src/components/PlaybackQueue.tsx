@@ -1,12 +1,5 @@
 import { useState } from "react";
-import {
-  ArrowUp,
-  ArrowDown,
-  GripVertical,
-  Plus,
-  Trash2,
-  X,
-} from "lucide-react";
+import { GripVertical, Plus, Trash2, X } from "lucide-react";
 import type { VideoEntry } from "../types";
 import { title, time } from "../lib/media";
 
@@ -115,22 +108,6 @@ export function PlaybackQueue({
               </span>
             </button>
             <div className="queue-row-actions">
-              <button
-                className="icon-button"
-                aria-label={`Move ${title(v.name)} up`}
-                disabled={index === 0}
-                onClick={() => onMove(v.id, videos[index - 1].id)}
-              >
-                <ArrowUp size={14} />
-              </button>
-              <button
-                className="icon-button"
-                aria-label={`Move ${title(v.name)} down`}
-                disabled={index === videos.length - 1}
-                onClick={() => onMove(v.id, videos[index + 1].id)}
-              >
-                <ArrowDown size={14} />
-              </button>
               <button
                 className="icon-button"
                 aria-label={`Remove ${title(v.name)} from queue`}
