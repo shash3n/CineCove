@@ -17,6 +17,7 @@ export function useSegmentAudio(
     url = useRef(""),
     serial = useRef(0),
     buffering = useRef(false),
+    background = useRef(false),
     wantPlay = useRef(false),
     mounted = useRef(true);
   const [active, setActive] = useState<number | null>(null),
@@ -28,6 +29,7 @@ export function useSegmentAudio(
     selected.current = null;
     setActive(null);
     buffering.current = false;
+    background.current = false;
     setLoading(false);
     audio.current?.pause();
     if (url.current) URL.revokeObjectURL(url.current);
@@ -54,7 +56,7 @@ export function useSegmentAudio(
     [service],
   );
   const prepare = useCallback(
-    async (time: number, resume: boolean) => {
+    async (time: number, resume: boolean, keepOriginal = false) => {
       const v = video.current,
         t = selected.current;
       if (!v || !t || !service.current) return;
@@ -69,9 +71,10 @@ export function useSegmentAudio(
       const ticket = ++serial.current;
       wantPlay.current = resume;
       buffering.current = true;
+      background.current = keepOriginal;
       setLoading(true);
       audio.current?.pause();
-      v.pause();
+      if (!keepOriginal) v.pause();
       try {
         const blob = await chunk(t, start);
         if (!mounted.current || ticket !== serial.current) return;
@@ -88,6 +91,9 @@ export function useSegmentAudio(
         });
         if (!mounted.current || ticket !== serial.current) return;
         windowStart.current = start;
+        v.muted = true;
+        setActive(t.index);
+        background.current = false;
         a.currentTime = Math.max(0, v.currentTime - start);
         a.volume = current.current.volume;
         a.muted = current.current.muted;
@@ -114,7 +120,7 @@ export function useSegmentAudio(
     [video, service, chunk, restore],
   );
   const select = useCallback(
-    (track: EmbeddedTrack | null) => {
+    (track: EmbeddedTrack | null, resumePlayback?: boolean) => {
       if (!track) {
         const resume = wantPlay.current;
         restore();
@@ -122,12 +128,12 @@ export function useSegmentAudio(
         return;
       }
       selected.current = track;
-      setActive(track.index);
+      if (resumePlayback === undefined) setActive(track.index);
       windowStart.current = -1;
       const v = video.current;
       if (v) {
-        v.muted = true;
-        void prepare(v.currentTime, !v.paused);
+        if (resumePlayback === undefined) v.muted = true;
+        void prepare(v.currentTime, !v.paused, resumePlayback !== undefined);
       }
     },
     [video, prepare, restore],
@@ -140,13 +146,14 @@ export function useSegmentAudio(
       if (!selected.current) return;
       wantPlay.current = true;
       if (buffering.current) {
+        if (background.current) return;
         v.pause();
         return;
       }
       void prepare(v.currentTime, true);
     };
     const pause = () => {
-      if (!buffering.current) wantPlay.current = false;
+      if (!buffering.current || background.current) wantPlay.current = false;
       audio.current?.pause();
     };
     const seeking = () => {
@@ -197,7 +204,16 @@ export function useSegmentAudio(
       a.muted = muted;
       a.playbackRate = speed;
     }
-    if (video.current) video.current.muted = selected.current ? true : muted;
+    if (video.current)
+      video.current.muted =
+        selected.current && !background.current ? true : muted;
   }, [video, volume, muted, speed]);
-  return { active, loading, select, restore, audio };
+  return {
+    active,
+    loading,
+    preparingInBackground: loading && background.current,
+    select,
+    restore,
+    audio,
+  };
 }

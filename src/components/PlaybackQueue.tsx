@@ -30,36 +30,31 @@ export function PlaybackQueue({
   onClear,
   onMove,
 }: PlaybackQueueProps) {
-  const [search, setSearch] = useState("");
   const [dragged, setDragged] = useState<string | null>(null);
   const [target, setTarget] = useState<string | null>(null);
-  const queued = new Set(videos.map((v) => v.id));
-  const available = library.filter(
-    (v) =>
-      v.id !== currentId &&
-      !queued.has(v.id) &&
-      v.name.toLowerCase().includes(search.toLowerCase()),
-  );
   return (
     <div className="playback-queue">
-      <h3>
-        Up next <span className="count-badge">{videos.length}</span>
-      </h3>
-      <p className="fine-print">
-        Auto-next plays this order before continuing TV episodes. Drag the
-        handles to reorder.
-      </p>
-      {videos.length > 0 && (
-        <button className="queue-clear text-button" onClick={onClear}>
-          <Trash2 size={14} />
-          Clear queue
+      <header className="queue-heading">
+        <div>
+          <h3>Queue</h3>
+          <span>
+            {Math.max(
+              0,
+              videos.findIndex((v) => v.id === currentId),
+            ) + 1}{" "}
+            / {videos.length}
+          </span>
+        </div>
+        <button className="text-button" onClick={onClear}>
+          Clear
         </button>
-      )}
+      </header>
       <ol className="queue-list" aria-label="Playback queue">
         {videos.map((v, index) => (
           <li
             key={v.id}
-            className={`queue-item ${target === v.id ? "drop-target" : ""}`}
+            aria-current={v.id === currentId ? "true" : undefined}
+            className={`queue-item ${v.id === currentId ? "current" : ""} ${target === v.id ? "drop-target" : ""}`}
             data-video-id={v.id}
             onDragOver={(event) => {
               if (dragged) {
@@ -101,11 +96,23 @@ export function PlaybackQueue({
               onClick={() => onPlay(v)}
               title={`Play ${title(v.name)} now`}
             >
-              <strong>{title(v.name)}</strong>
-              <small>
-                {v.duration ? time(v.duration) : v.format.toUpperCase()}
-                {index === 0 ? " · Next up" : ""}
-              </small>
+              <span className="queue-thumb">
+                {v.thumbnail ? (
+                  <img src={v.thumbnail} alt="" loading="lazy" />
+                ) : (
+                  <span className="queue-thumb-fallback">
+                    {v.format.toUpperCase()}
+                  </span>
+                )}
+                <span className="queue-duration">{time(v.duration)}</span>
+              </span>
+              <span className="queue-copy">
+                <strong>{title(v.name)}</strong>
+                <small>
+                  {v.duration ? time(v.duration) : v.format.toUpperCase()}
+                  {index === 0 ? " · Next up" : ""}
+                </small>
+              </span>
             </button>
             <div className="queue-row-actions">
               <button

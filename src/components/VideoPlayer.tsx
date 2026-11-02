@@ -591,6 +591,11 @@ export function PlayerControls({
               <button
                 className="player-button"
                 aria-label="Play previous video"
+                title={
+                  previousVideo
+                    ? `Play previous: ${title(previousVideo.name)}`
+                    : "No previous video"
+                }
                 disabled={!previousVideo}
                 onClick={onPrevious}
               >
@@ -1149,7 +1154,7 @@ export default function VideoPlayer({
               enabled: i === index,
             })),
           );
-        } else segmentAudio.select(preferred);
+        } else segmentAudio.select(preferred, !showResume);
       }
     }
     if (!autoSubtitle.current && !subtitleChosen.current) {
@@ -1436,25 +1441,33 @@ export default function VideoPlayer({
             setError(playbackError(video.current?.error));
           }}
         />
-        {(waiting || segmentAudio.loading) && !error && !busy && (
-          <div className="video-wait">
-            <LoaderCircle className="spin" size={35} />
-            <span>
-              {segmentAudio.loading
-                ? "Preparing selected audio locally…"
-                : "Opening your video…"}
-            </span>
-          </div>
-        )}
-        {!playing && !waiting && !error && !busy && !showResume && (
-          <button
-            className="center-play"
-            onClick={toggle}
-            aria-label="Play video"
-          >
-            <Play size={32} fill="currentColor" />
-          </button>
-        )}
+        {(waiting ||
+          (segmentAudio.loading && !segmentAudio.preparingInBackground)) &&
+          !error &&
+          !busy && (
+            <div className="video-wait">
+              <LoaderCircle className="spin" size={35} />
+              <span>
+                {segmentAudio.loading
+                  ? "Preparing selected audio locally…"
+                  : "Opening your video…"}
+              </span>
+            </div>
+          )}
+        {!playing &&
+          !waiting &&
+          !segmentAudio.loading &&
+          !error &&
+          !busy &&
+          !showResume && (
+            <button
+              className="center-play"
+              onClick={toggle}
+              aria-label="Play video"
+            >
+              <Play size={32} fill="currentColor" />
+            </button>
+          )}
         {activeCues.length > 0 && (
           <div
             className={`subtitle-overlay ${prefs.subtitlePosition === "top" ? "top" : ""}`}
