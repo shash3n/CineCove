@@ -5215,3 +5215,27 @@ main {
 .queue-row-actions {
   color: var(--muted);
 }
+
+/* All content under a queued video shares the media column's exact bounds. */
+@media (min-width: 1001px) {
+  .player-shell:has(.queue-sidebar) > .player-stage,
+  .player-shell:has(.queue-sidebar) > .now-playing-info,
+  .player-shell:has(.queue-sidebar) > .episode-browser {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    margin-left: 0;
+    margin-right: 0;
+    justify-self: stretch;
+  }
+  .player-shell:has(.queue-sidebar) > .now-playing-info {
+    margin-top: 0;
+    margin-bottom: 0;
+    padding: 28px 0;
+  }
+  .player-shell:has(.queue-sidebar) > .episode-browser {
+    margin-top: 0;
+    margin-bottom: 24px;
+    padding: 12px 0 0;
+  }
+}

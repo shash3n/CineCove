@@ -149,6 +149,7 @@ try {
       name: "Comfort Watches",
       videoIds: [mainId, "demo-2", "demo-4"],
     });
+    localStorage.setItem("cinevault.queue", JSON.stringify(["demo-1", "demo-2"]));
     return Array.from(data);
   });
   await page.reload();
@@ -186,6 +187,9 @@ try {
     .getByRole("button", { name: "Weekend Cinema", exact: true })
     .click();
   await capture("playlist-collection-chrome");
+  await page.getByRole("button", { name: "Select videos", exact: true }).click();
+  await capture("playlist-picker-chrome");
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await page.getByRole("button", { name: "TV Shows", exact: true }).click();
   await page
     .getByRole("button", { name: "Open show Signals from Tomorrow" })
@@ -235,7 +239,18 @@ try {
   });
   if (await dismissResume.count()) await dismissResume.click();
   await capture("player-chrome");
+  await page.locator(".queue-sidebar").screenshot({ path: "docs/screenshots/queue-chrome.png", animations: "disabled" });
+  await page.locator(".player-stage").focus();
+  await page.keyboard.press("?");
+  await page.getByRole("dialog", { name: "Keyboard shortcuts", exact: true }).waitFor();
+  await capture("shortcuts-chrome");
+  await page.getByRole("button", { name: "Done", exact: true }).click();
+  await page.getByRole("button", { name: "Blinds mode", exact: true }).click();
+  await capture("blinds-chrome");
+  await page.getByRole("button", { name: "Exit blinds mode", exact: true }).click({ position: { x: 4, y: 4 } });
   await page.getByRole("button", { name: "Back to library" }).click();
+  await capture("mini-player-chrome");
+  await page.getByRole("button", { name: "Close video", exact: true }).click();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page
     .getByRole("combobox", { name: "Theme", exact: true })

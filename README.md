@@ -25,6 +25,26 @@ Captured in Google Chrome using an isolated demo library. All titles, AI-generat
 
 ![Custom cinematic player](docs/screenshots/player-chrome.png)
 
+**Queue sidebar**
+
+![Thumbnail queue with the selected accent](docs/screenshots/queue-chrome.png)
+
+**Blinds mode**
+
+![Player with the surrounding page blackened](docs/screenshots/blinds-chrome.png)
+
+**Floating mini-player**
+
+![Library with a floating video player](docs/screenshots/mini-player-chrome.png)
+
+**Custom keyboard shortcuts**
+
+![Shortcut editor with reset controls](docs/screenshots/shortcuts-chrome.png)
+
+**Bulk playlist selection**
+
+![Searchable playlist selection](docs/screenshots/playlist-picker-chrome.png)
+
 **TV seasons and episodes**
 
 ![Show seasons and episode collection](docs/screenshots/show-seasons-chrome.png)
@@ -79,8 +99,10 @@ To reproduce these captures, start `npm run dev`, then run `node scripts/capture
 - Control seeking, volume, mute, fullscreen, picture-in-picture (where supported), approximate frame stepping, and playback speed from **0.25× to 3×**.
 - Use auto-hiding player controls, keyboard shortcuts, and a cached-image seek preview.
 - Videos at 85% completion are marked watched, excluded from Continue Watching, and restart on their next opening. Advancing to a later TV episode hides earlier episodes from Continue Watching while keeping their saved positions.
-- Enable or disable auto-next in the player. Queued videos play first, then the next TV episode across seasons; fullscreen stays active between videos.
-- Add videos to the playback queue from a library menu or the player. Drag to reorder, use the accessible move buttons, remove items, or clear the queue. Queue order and auto-next preferences are saved locally.
+- Enable or disable auto-next in the player. Queued videos follow queue order; without a queue, TV episodes continue across seasons; fullscreen stays active between videos.
+- Add videos to the playback queue from their library menus. A thumbnail sidebar appears beside the player only while a queue exists. Drag to reorder, remove items, or clear the queue; no suggestions or search appear in the panel. Queue order and auto-next preferences are saved locally.
+- Previous/next controls beside Play follow queue order when a queue exists, or TV episode order otherwise.
+- Back to library keeps playback in a floating mini-player. Expand it to return to the player page, or close it to stop playback.
 - Use the blinds icon to blacken everything outside the player without entering fullscreen. Click outside the player to restore the page.
 - The right-side resume toast dismisses after six seconds; hovering or focusing its controls pauses dismissal.
 - Open keyboard shortcuts with **?**, use **A** for audio tracks and **C** to toggle captions, or assign individual keys in the fullscreen-compatible shortcut editor. Duplicate bindings are rejected; **Reset shortcuts** restores defaults.
@@ -91,7 +113,7 @@ To reproduce these captures, start `npm run dev`, then run `node scripts/capture
 - Inspect embedded tracks locally and extract supported text subtitles as WebVTT. Prefer default audio and subtitle tracks and remember whether captions are enabled.
 - Adjust subtitle font, size, text color and opacity, edges, background, top/bottom placement, distance from the chosen edge (0–40%), and timing offset (±120 seconds). The default edge distance is 4%; height is controlled by a precise slider in Settings and the player subtitle menu.
 - Save subtitle appearance and language preferences locally; restore defaults from Settings or the player.
-- Switch native audio tracks where the browser supports them.
+- Switch native audio tracks where the browser supports them. Browser audio continues while a default embedded audio track prepares, then switches to the ready track.
 - For supported streams, decode an alternate stereo AAC track in synchronized 120-second windows, with limited caching and prefetching.
 
 **Subtitle limitations:** Advanced ASS/SSA styling and image-based subtitle formats such as PGS, VobSub, and DVB are not rendered. Embedded extraction may take time and is limited to 10 MB of subtitle output and three cached extracted tracks per open video.
