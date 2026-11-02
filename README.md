@@ -8,6 +8,49 @@ CineVault is a responsive, browser-based video library and player built with Rea
 
 > **Privacy by design:** Your video files stay on your device. No account, backend, cloud media storage, analytics, CDN, or external font service is required. Browser storage holds library metadata, preferences, and supported file handles—not copies of entire movies.
 
+## Screenshots
+
+Captured in Google Chrome using an isolated demo library. All titles, AI-generated artwork, favorites, and playlists below are fictional; no personal media is shown or changed.
+
+![CineVault library with fictional movies and a grouped TV show](docs/screenshots/library-chrome.png)
+
+<details>
+<summary>Home, player, shows, favorites, playlists, and settings</summary>
+
+**Home**
+
+![Home and Continue Watching](docs/screenshots/home-chrome.png)
+
+**Local video playback**
+
+![Custom cinematic player](docs/screenshots/player-chrome.png)
+
+**TV seasons and episodes**
+
+![Show seasons and episode collection](docs/screenshots/show-seasons-chrome.png)
+
+**Favorites**
+
+![Favorite movies](docs/screenshots/favorites-chrome.png)
+
+**Playlist collections**
+
+![Organized playlist collections](docs/screenshots/playlists-chrome.png)
+
+![Weekend Cinema playlist](docs/screenshots/playlist-collection-chrome.png)
+
+**Daylight theme**
+
+![Daylight settings](docs/screenshots/daylight-chrome.png)
+
+**Subtitle appearance and user data**
+
+![Subtitle height and appearance settings with data import and export](docs/screenshots/data-settings-chrome.png)
+
+</details>
+
+To reproduce these captures, start `npm run dev`, then run `node scripts/capture-readme.mjs`. Google Chrome must be installed. The script uses a fresh browser context, locally generated sample video, and the artwork atlas in `docs/demo-artwork.png`; it never reads your personal library.
+
 ## Features
 
 ### Your personal media library
@@ -17,7 +60,8 @@ CineVault is a responsive, browser-based video library and player built with Rea
 - Search filenames; filter by format and resolution; sort by name, date, duration, or size.
 - Switch between grid and list views, inspect video details, and set custom thumbnails.
 - Save favorites and create, rename, edit, or delete playlists.
-- Reconnect and scan folders explicitly to find new files; originals are never deleted when you remove library entries.
+- Connected folders auto-sync on launch, every 30 seconds while visible, and when returning to the app. Originals are never deleted when you remove library entries; removed entries stay excluded from automatic scans.
+- Export and import user data: watch history, favorites, playlists, shows, metadata, thumbnails, and preferences.
 
 ### Movies and TV shows
 
@@ -40,7 +84,7 @@ CineVault is a responsive, browser-based video library and player built with Rea
 
 - Load external **SRT, WebVTT, ASS, or SSA** subtitles.
 - Inspect embedded tracks locally and extract supported text subtitles as WebVTT.
-- Adjust subtitle font, size, text color and opacity, edges, background, position, and timing offset (±120 seconds).
+- Adjust subtitle font, size, text color and opacity, edges, background, top/bottom placement, distance from the chosen edge (0–40%), and timing offset (±120 seconds). The default edge distance is 4%; height is controlled by a precise slider in Settings and the player subtitle menu.
 - Save subtitle appearance and language preferences locally; restore defaults from Settings or the player.
 - Switch native audio tracks where the browser supports them.
 - For supported streams, decode an alternate stereo AAC track in synchronized 120-second windows, with limited caching and prefetching.
@@ -95,10 +139,10 @@ CineVault recognizes these containers:
 
 CineVault tries native playback first, without copying the full movie into JavaScript memory. If decoding fails, it offers two opt-in recovery options:
 
-| Option | What it does | Trade-off |
-| --- | --- | --- |
-| **Repackage as MP4** | Copies the first video stream and converts the first audio stream to AAC. | Faster and lossless for compatible video streams, but not every codec works in MP4. |
-| **Full conversion** | Converts the first video/audio streams to H.264/AAC, YUV420p MP4, with maximum width 1920. | Slower and may reduce quality. |
+| Option               | What it does                                                                               | Trade-off                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| **Repackage as MP4** | Copies the first video stream and converts the first audio stream to AAC.                  | Faster and lossless for compatible video streams, but not every codec works in MP4. |
+| **Full conversion**  | Converts the first video/audio streams to H.264/AAC, YUV420p MP4, with maximum width 1920. | Slower and may reduce quality.                                                      |
 
 Compatibility conversion is limited to **256 MB input** and a **10-minute timeout**. These limits do not guarantee success on low-memory devices. Conversion uses additional RAM and temporary WASM storage. The original file is never modified, and temporary output is not saved between sessions.
 
@@ -108,15 +152,19 @@ Resolution filters use measured video dimensions rather than filename claims. Fo
 
 ## Local storage and privacy
 
-| Storage | Contents |
-| --- | --- |
-| **IndexedDB** | Library metadata, folder and file handles where supported, playlists, history, cached thumbnails, and TV assignments. |
-| **LocalStorage** | Appearance and playback preferences. |
-| **Session memory** | File objects from fallback imports and loaded/extracted subtitle cues. |
+| Storage            | Contents                                                                                                              |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| **IndexedDB**      | Library metadata, folder and file handles where supported, playlists, history, cached thumbnails, and TV assignments. |
+| **LocalStorage**   | Appearance and playback preferences.                                                                                  |
+| **Session memory** | File objects from fallback imports and loaded/extracted subtitle cues.                                                |
 
 Chrome and Edge can persist supported file and folder handles, but may ask for read permission again. Browsers without native pickers use standard file or directory inputs, whose files may need to be reselected after a reload. Saved playback positions remain in browser storage.
 
-Folder scanning is manual—there is no filesystem watcher. Reconnect or reimport renamed, moved, or disconnected files. Files with matching name, size, and modification date are deduplicated. Native folder picking can record empty directories; fallback directory inputs can only infer folders that contain selected files.
+Folder sync polls connected folders without copying video contents. Scans run on launch, every 30 seconds while the tab is visible, and on focus. New videos are imported and previews are generated only for new entries. Missing or changed originals are labeled unavailable and retain their history; returning files reconnect automatically. A failed scan never marks a partially read folder as missing. Browser permission cannot be bypassed: use the reconnect banner when Chrome requests renewed read access, and choose persistent access when offered. Fallback file/directory inputs cannot auto-sync after reload. Files with matching name, size, and modification date are deduplicated. Native folder picking can record empty directories; fallback inputs only infer folders containing selected files.
+
+### Back up or move your library
+
+Use **Settings → Local storage → Export user data** to download a versioned JSON backup. **Import user data** validates a backup and asks for confirmation before merging it: matching IDs use backup metadata, other entries stay, and preferences are restored. Existing file handles on this device are retained. Import is atomic for IndexedDB data; videos are never copied. Backups do not include video contents or portable folder permissions, so reconnect folders on another browser or device. Import accepts backups up to 100 MB. Treat the backup as personal data because it contains filenames, folder labels, history, and thumbnails.
 
 **Upgrading from an older CineVault version?** Reconnect and scan previously imported folders once to rebuild subfolder paths. Existing library entries migrate to IndexedDB v2 without clearing the library.
 
@@ -140,6 +188,8 @@ src/
   lib/
     media.ts              Native playback, metadata, previews, conversion
     storage.ts            IndexedDB and LocalStorage
+    backup.ts             Portable, validated user data backups
+    folderSync.ts         Permission-aware local folder scans
     subtitles.ts          Subtitle parsing and safe cues
     embedded.ts           FFprobe, subtitle extraction, audio windows
     useSegmentAudio.ts    Alternate audio synchronization
@@ -183,11 +233,11 @@ Manual testing is still recommended for real folder permission prompts, diverse 
 
 - Browser codec support determines which original files play natively.
 - Local FFmpeg conversion is memory-intensive and restricted to smaller files.
-- Scanning folders is explicit; new files are not detected automatically.
+- Folder sync runs while CineVault is open; browser permissions must remain granted. It cannot watch folders while the app is closed.
 - Browser permissions and file handles may need reconnection.
 - Clearing browser site data removes locally stored library information.
 - Skip-intro detection is not available because local videos do not provide reliable intro markers.
-- Timeline hover uses a cached poster rather than decoding a unique frame at every position.
+- Timeline hover decodes nearby frames through a separate, bounded cache; preview decoding depends on native browser codec support.
 - Large libraries currently render without grid virtualization.
 
 ## Technical references

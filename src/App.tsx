@@ -29,6 +29,8 @@ import { FolderBrowser } from "./components/FolderBrowser";
 import { TVShows, ShowEditor, EpisodeEditor } from "./components/TVShows";
 import { defaults } from "./types";
 import { storage, loadPreferences, savePreferences } from "./lib/storage";
+import { parseBackup, serializeBackup } from "./lib/backup";
+import { scanFolder } from "./lib/folderSync";
 import {
   accept,
   isVideo,
@@ -100,12 +102,15 @@ export default function App() {
       action: () => void;
     } | null>(null),
     [help, setHelp] = useState(false);
+  const [syncStatus, setSyncStatus] = useState("Checking connected folders…");
+  const [blockedFolders, setBlockedFolders] = useState<Folder[]>([]);
   const files = useRef(new Map<string, File>()),
     entries = useRef(videos),
     importLock = useRef(false),
     individualInput = useRef<HTMLInputElement>(null),
     folderInput = useRef<HTMLInputElement>(null),
     reconnectInput = useRef<HTMLInputElement>(null),
+    backupInput = useRef<HTMLInputElement>(null),
     dragCount = useRef(0),
     toastTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   entries.current = videos;
@@ -191,6 +196,192 @@ export default function App() {
         );
   }, [prefs.theme, prefs.accent]);
   useEffect(() => setSort(prefs.sort), [prefs.sort]);
+  const syncLatest = useRef<() => Promise<void>>(async () => {});
+  syncLatest.current = async () => {
+    if (loading || importLock.current || document.hidden) return;
+    importLock.current = true;
+    if (folders.length) setSyncStatus("Syncing connected folders…");
+    let needsPermission = 0,
+      failed = 0;
+    const blocked: Folder[] = [];
+    try {
+      for (const folder of folders) {
+        try {
+          const result = await scanFolder(folder);
+          if (!result) {
+            needsPermission++;
+            blocked.push(folder);
+            continue;
+          }
+          const known = new Map(entries.current.map((v) => [v.id, v]));
+          const ignored = new Set(folder.ignoredIds || []);
+          for (const [id, item] of result.found) {
+            if (ignored.has(id)) continue;
+            const old = known.get(id);
+            if (old) {
+              if (
+                old.missing ||
+                old.folderId !== folder.id ||
+                old.relativePath !== item.relativePath
+              )
+                update(id, {
+                  missing: false,
+                  folderId: folder.id,
+                  relativePath: item.relativePath,
+                  handle: item.handle,
+                });
+            } else {
+              const entry = {
+                ...describeFile(item.file),
+                handle: item.handle,
+                folderId: folder.id,
+                relativePath: item.relativePath,
+              };
+              entries.current = [entry, ...entries.current];
+              setVideos(entries.current);
+              await storage.saveVideo(entry);
+              update(id, await inspectFile(item.file, prefs.thumbnails));
+            }
+          }
+          for (const entry of entries.current.filter(
+            (v) => v.folderId === folder.id,
+          )) {
+            if (!result.found.has(entry.id)) {
+              files.current.delete(entry.id);
+              if (!entry.missing) update(entry.id, { missing: true });
+            }
+          }
+          const refreshed = { ...folder, paths: result.paths };
+          await storage.saveFolder(refreshed);
+          setFolders((current) =>
+            current.map((f) => (f.id === folder.id ? refreshed : f)),
+          );
+        } catch {
+          failed++;
+        }
+      }
+      setBlockedFolders(blocked);
+      setSyncStatus(
+        failed
+          ? "A folder is unavailable. Check your drive or reconnect it below."
+          : needsPermission
+            ? `${needsPermission} folder(s) need permission. Use Reconnect below; allow access on every visit if Chrome offers it.`
+            : folders.length
+              ? `Auto-sync on · Last checked ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+              : "Connected folders sync automatically every 30 seconds and when you return to CineVault.",
+      );
+    } finally {
+      importLock.current = false;
+    }
+  };
+  useEffect(() => {
+    if (loading) return;
+    void syncLatest.current();
+    const sync = () => {
+      void syncLatest.current();
+    };
+    const timer = setInterval(sync, 30000);
+    window.addEventListener("focus", sync);
+    document.addEventListener("visibilitychange", sync);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", sync);
+      document.removeEventListener("visibilitychange", sync);
+    };
+  }, [loading]);
+  async function exportData() {
+    try {
+      const [v, f, p, s] = await Promise.all([
+        storage.videos(),
+        storage.folders(),
+        storage.playlists(),
+        storage.shows(),
+      ]);
+      const url = URL.createObjectURL(
+        new Blob(
+          [
+            serializeBackup({
+              videos: v,
+              folders: f,
+              playlists: p,
+              shows: s,
+              preferences: prefs,
+            }),
+          ],
+          { type: "application/json" },
+        ),
+      );
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `cinevault-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      notify(
+        "User data exported. Video files and folder permissions are not included.",
+      );
+    } catch {
+      notify("Could not export user data. Check available storage.", true);
+    }
+  }
+  async function importData(file: File) {
+    try {
+      if (file.size > 100 * 1024 * 1024)
+        throw new Error("Backup exceeds the 100 MB safety limit.");
+      const data = parseBackup(await file.text());
+      setConfirm({
+        title: "Import CineVault data?",
+        message: `Merge ${data.videos.length} videos, ${data.playlists.length} playlists and ${data.shows.length} shows. Matching IDs use the backup's metadata; other entries stay. Preferences are restored. Reconnect folders on a new device.`,
+        action: async () => {
+          if (importLock.current) {
+            notify(
+              "Please wait for the current folder scan or import to finish.",
+            );
+            return;
+          }
+          importLock.current = true;
+          try {
+            const existingFolders = await storage.folders();
+            const existingVideos = await storage.videos();
+            await storage.mergeBackup({
+              ...data,
+              folders: data.folders.map((f) => ({
+                ...f,
+                handle: existingFolders.find((old) => old.id === f.id)?.handle,
+              })),
+              videos: data.videos.map((v) => ({
+                ...v,
+                handle: existingVideos.find((old) => old.id === v.id)?.handle,
+              })),
+            });
+            const [v, f, p, s] = await Promise.all([
+              storage.videos(),
+              storage.folders(),
+              storage.playlists(),
+              storage.shows(),
+            ]);
+            entries.current = v;
+            setVideos(v);
+            setFolders(f);
+            setPlaylists(p);
+            setShows(s);
+            setPrefs(data.preferences);
+            notify(
+              "User data imported. Reconnect any folders needing permission.",
+            );
+          } catch {
+            notify(
+              "Could not import the backup. Check available browser storage.",
+              true,
+            );
+          } finally {
+            importLock.current = false;
+          }
+        },
+      });
+    } catch (e) {
+      notify(`Import failed: ${(e as Error).message}`, true);
+    }
+  }
   useEffect(() => {
     const restore = () => {
       const state = history.state?.cinevault;
@@ -278,6 +469,7 @@ export default function App() {
             update(id, {
               ...(handle ? { handle } : {}),
               folderId: folderId || old.folderId,
+              missing: false,
               ...(relativePath ? { relativePath } : {}),
             });
           if (!old.thumbnail && old.width > 0 && prefs.thumbnails) {
@@ -350,6 +542,10 @@ export default function App() {
     } else individualInput.current?.click();
   }
   async function chooseFolder() {
+    if (importLock.current) {
+      notify("Please wait for the current folder scan or import to finish.");
+      return;
+    }
     setImportDialog(false);
     if ("showDirectoryPicker" in window) {
       try {
@@ -392,6 +588,10 @@ export default function App() {
     } else folderInput.current?.click();
   }
   async function rescan(folder: Folder) {
+    if (importLock.current) {
+      notify("Please wait for the current folder scan or import to finish.");
+      return;
+    }
     if (!folder.handle) {
       folderInput.current?.click();
       return;
@@ -401,16 +601,7 @@ export default function App() {
         mode: "read",
       });
       if (result !== "granted") throw new Error("Permission denied");
-      const paths: string[] = [];
-      await importEntries(
-        walkFolder(folder.handle, "", (p) => paths.push(p)),
-        folder.id,
-      );
-      const refreshed = { ...folder, paths };
-      await storage.saveFolder(refreshed);
-      setFolders((prev) =>
-        prev.map((f) => (f.id === folder.id ? refreshed : f)),
-      );
+      await syncLatest.current();
     } catch {
       setError(
         "Folder access was not granted. Reconnect the folder with “Add a folder” and approve read permission.",
@@ -418,6 +609,12 @@ export default function App() {
     }
   }
   async function play(v: VideoEntry) {
+    if (v.missing) {
+      setError(
+        "This video is no longer in its connected folder. Restore the file or reconnect its new location. Watch history is preserved.",
+      );
+      return;
+    }
     let file = files.current.get(v.id);
     if (!file && v.handle) {
       try {
@@ -451,6 +648,10 @@ export default function App() {
     setPlayer({ id: v.id, file });
   }
   async function importFolderInput(selected: File[]) {
+    if (importLock.current) {
+      notify("Please wait for the current folder scan or import to finish.");
+      return;
+    }
     if (!selected.length) return;
     const name =
       selected[0].webkitRelativePath.split("/")[0] || "Imported folder";
@@ -524,6 +725,23 @@ export default function App() {
       title: "Remove from your library?",
       message: `“${v.name}” will be removed from CineVault. Your original file stays on your device.`,
       action: () => {
+        if (importLock.current) {
+          notify("Please wait for the folder scan or import to finish.");
+          return;
+        }
+        const folder = folders.find((f) => f.id === v.folderId);
+        if (folder) {
+          const changed = {
+            ...folder,
+            ignoredIds: [...new Set([...(folder.ignoredIds || []), v.id])],
+          };
+          setFolders((current) =>
+            current.map((f) => (f.id === folder.id ? changed : f)),
+          );
+          void storage
+            .saveFolder(changed)
+            .catch(() => notify("Could not save the folder exclusion.", true));
+        }
         entries.current = entries.current.filter((x) => x.id !== v.id);
         setVideos(entries.current);
         files.current.delete(v.id);
@@ -704,12 +922,35 @@ export default function App() {
           onMenu={() => setSidebar(true)}
         />
         <main>
+          {!loading && blockedFolders.length > 0 && page !== "Settings" && (
+            <div className="folder-permission-banner" role="status">
+              <div>
+                <strong>Folder access needed</strong>
+                <p>
+                  Your browser needs permission to resume automatic sync. Video
+                  history is saved.
+                </p>
+              </div>
+              {blockedFolders.map((folder) => (
+                <button
+                  className="button subtle"
+                  key={folder.id}
+                  onClick={() => void rescan(folder)}
+                >
+                  Reconnect {folder.name}
+                </button>
+              ))}
+            </div>
+          )}
           {loading ? (
             <div className="startup">
               <LoadingIndicator text="Opening your private cinema…" />
             </div>
           ) : page === "Settings" ? (
             <SettingsPage
+              syncStatus={syncStatus}
+              onExport={exportData}
+              onImport={() => backupInput.current?.click()}
               prefs={prefs}
               setPrefs={setPrefs}
               folders={folders}
@@ -720,6 +961,12 @@ export default function App() {
                   message:
                     "Remove all imported entries, folder links, playlists, TV shows, thumbnails and playback history from this browser. Original files and appearance preferences are kept.",
                   action: async () => {
+                    if (importLock.current) {
+                      notify(
+                        "Please wait for the current folder scan or import to finish.",
+                      );
+                      return;
+                    }
                     try {
                       await storage.clearLibrary();
                     } catch {
@@ -744,6 +991,12 @@ export default function App() {
               }
               onRescan={rescan}
               onRemoveFolder={(f) => {
+                if (importLock.current) {
+                  notify(
+                    "Please wait for the current folder scan or import to finish.",
+                  );
+                  return;
+                }
                 setFolders((prev) => prev.filter((x) => x.id !== f.id));
                 storage
                   .removeFolder(f.id)
@@ -1130,6 +1383,17 @@ export default function App() {
         }}
       />
       <input
+        type="file"
+        ref={backupInput}
+        accept=".json,application/json"
+        hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) void importData(file);
+          e.target.value = "";
+        }}
+      />
+      <input
         ref={folderInput}
         type="file"
         {...({ webkitdirectory: "", directory: "" } as any)}
@@ -1142,6 +1406,7 @@ export default function App() {
       />
       <input
         ref={reconnectInput}
+        data-purpose="reconnect"
         type="file"
         accept={accept}
         hidden
@@ -1150,7 +1415,7 @@ export default function App() {
           if (file && reconnect) {
             if (fileId(file) === reconnect.id) {
               files.current.set(reconnect.id, file);
-              update(reconnect.id, { continueHidden: false });
+              update(reconnect.id, { continueHidden: false, missing: false });
               history.pushState(
                 {
                   cinevault: {

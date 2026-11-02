@@ -27,6 +27,9 @@ export function SettingsPage({
   onReset,
   onClearLibrary,
   videoCount,
+  syncStatus,
+  onExport,
+  onImport,
 }: {
   prefs: Preferences;
   setPrefs: (p: Preferences) => void;
@@ -39,6 +42,9 @@ export function SettingsPage({
   onReset: () => void;
   onClearLibrary: () => void;
   videoCount: number;
+  syncStatus: string;
+  onExport: () => void;
+  onImport: () => void;
 }) {
   const [usage, setUsage] = useState(0);
   useEffect(() => {
@@ -233,6 +239,9 @@ export function SettingsPage({
             </select>
           </div>
           <div className="folder-list">
+            <p className="fine-print" role="status">
+              {syncStatus}
+            </p>
             {folders.map((f) => (
               <div key={f.id}>
                 <FolderOpen size={17} />
@@ -261,8 +270,12 @@ export function SettingsPage({
             Add a folder
           </button>
           <p className="fine-print">
-            Folder permissions may need approval again after reopening your
-            browser. File input imports need reconnecting after reload.
+            Folder changes sync on launch, every 30 seconds while visible, and
+            when you return to the tab. Missing files keep their history and are
+            labeled unavailable. Your browser may require permission again after
+            reopening; choose persistent access when offered. Standard
+            file-input imports cannot auto-sync and need reconnecting after
+            reload.
           </p>
         </section>
         <section className="settings-card storage-card">
@@ -279,6 +292,12 @@ export function SettingsPage({
             <span className="local-pill">LOCAL ONLY</span>
           </div>
           <div className="storage-buttons">
+            <button className="button subtle" onClick={onExport}>
+              Export user data
+            </button>
+            <button className="button subtle" onClick={onImport}>
+              Import user data
+            </button>
             <button
               className="button subtle danger-text"
               onClick={onClearLibrary}
@@ -300,7 +319,10 @@ export function SettingsPage({
           </div>
           <p className="fine-print">
             Clearing browser site data removes your library metadata. Your
-            original videos are never stored here or changed.
+            original videos are never stored here or changed. Backups include
+            metadata, thumbnails, favorites, playlists, shows, watch progress
+            and preferences. Video files and browser permissions are excluded.
+            Import merges data after confirmation.
           </p>
         </section>
       </div>

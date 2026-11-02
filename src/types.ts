@@ -23,6 +23,7 @@ export interface VideoEntry {
   showId?: string;
   season?: number;
   episode?: number;
+  missing?: boolean;
 }
 export interface Playlist {
   id: string;
@@ -34,6 +35,7 @@ export interface Folder {
   name: string;
   handle?: FileSystemDirectoryHandle;
   paths?: string[];
+  ignoredIds?: string[];
   added: number;
 }
 export interface Preferences {
@@ -54,6 +56,7 @@ export interface Preferences {
   subtitleBackgroundColor: string;
   subtitleBackgroundOpacity: number;
   subtitlePosition: "bottom" | "top";
+  subtitleOffset: number;
   subtitleLanguage: string;
 }
 export const defaults: Preferences = {
@@ -74,6 +77,7 @@ export const defaults: Preferences = {
   subtitleBackgroundColor: "#000000",
   subtitleBackgroundOpacity: 0.7,
   subtitlePosition: "bottom",
+  subtitleOffset: 4,
   subtitleLanguage: "en",
 };
 export interface Cue {

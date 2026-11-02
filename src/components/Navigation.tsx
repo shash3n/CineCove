@@ -206,9 +206,6 @@ export function TopNavigation({
           <Plus size={17} />
           <span>Import videos</span>
         </button>
-        <span className="profile-badge" title="Local workspace">
-          CV
-        </span>
       </div>
     </header>
   );

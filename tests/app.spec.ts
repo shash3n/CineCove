@@ -104,6 +104,31 @@ test("library, playback, history, subtitles, playlists, settings and privacy", a
   await expect(page.locator(".subtitle-overlay")).toHaveText(
     "A private movie night.",
   );
+  await page.getByRole("button", { name: "Subtitles", exact: true }).click();
+  await page
+    .getByRole("slider", { name: "Subtitle distance from edge" })
+    .fill("2");
+  const edgeGap = (edge: "top" | "bottom") =>
+    page.locator(".subtitle-overlay").evaluate((el, edge) => {
+      const box = el.getBoundingClientRect();
+      const stage = el.closest(".player-stage")!.getBoundingClientRect();
+      return (
+        (edge === "top" ? box.top - stage.top : stage.bottom - box.bottom) /
+        stage.height
+      );
+    }, edge);
+  await expect.poll(() => edgeGap("bottom")).toBeCloseTo(0.02, 2);
+  await page
+    .getByRole("combobox", { name: "Subtitle position", exact: true })
+    .selectOption("top");
+  await expect.poll(() => edgeGap("top")).toBeCloseTo(0.02, 2);
+  await page
+    .getByRole("button", { name: "Reset subtitle appearance", exact: true })
+    .click();
+  await expect(
+    page.getByRole("slider", { name: "Subtitle distance from edge" }),
+  ).toHaveValue("4");
+  await page.getByRole("button", { name: "Subtitles", exact: true }).click();
   await page.locator(".player-stage").focus();
   await page.keyboard.press("m");
   await expect

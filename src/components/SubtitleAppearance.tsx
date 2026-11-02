@@ -20,6 +20,7 @@ export function subtitleStyle(p: Preferences) {
       : "transparent",
     "--subtitle-font": p.subtitleFont,
     "--subtitle-edge": edges[p.subtitleEdge],
+    "--subtitle-offset": `${p.subtitleOffset}%`,
   } as React.CSSProperties;
 }
 export function SubtitleAppearance({
@@ -33,6 +34,19 @@ export function SubtitleAppearance({
     setPrefs({ ...p, [key]: value });
   return (
     <div className="subtitle-appearance">
+      <label className="player-setting">
+        Distance from {p.subtitlePosition} edge
+        <input
+          aria-label="Subtitle distance from edge"
+          type="range"
+          min="0"
+          max="40"
+          step="1"
+          value={p.subtitleOffset}
+          onChange={(e) => update("subtitleOffset", +e.target.value)}
+        />
+        <span>{p.subtitleOffset}%</span>
+      </label>
       <label className="player-setting">
         Font family
         <select

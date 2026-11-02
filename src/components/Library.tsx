@@ -155,6 +155,9 @@ export const VideoCard = memo(function VideoCard({
           {title(v.name)}
         </button>
         <div className="card-meta">
+          {v.missing && (
+            <span className="danger-text">FILE UNAVAILABLE · </span>
+          )}
           <span>{v.showId || v.season !== undefined ? "SHOW" : "MOVIE"}</span>
           <i />
           {v.season !== undefined && (

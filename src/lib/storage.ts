@@ -61,6 +61,24 @@ async function write(store: string, value: unknown, remove = false) {
   });
 }
 export const storage = {
+  mergeBackup: async (data: {
+    videos: VideoEntry[];
+    folders: Folder[];
+    playlists: Playlist[];
+    shows: TVShow[];
+  }) => {
+    const d = await db();
+    await new Promise<void>((resolve, reject) => {
+      const tx = d.transaction(
+        ["videos", "folders", "playlists", "shows"],
+        "readwrite",
+      );
+      for (const name of ["videos", "folders", "playlists", "shows"] as const)
+        for (const record of data[name]) tx.objectStore(name).put(record);
+      tx.oncomplete = () => resolve();
+      tx.onerror = tx.onabort = () => reject(tx.error);
+    });
+  },
   clearLibrary: async () => {
     const d = await db();
     return new Promise<void>((resolve, reject) => {

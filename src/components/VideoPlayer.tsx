@@ -354,6 +354,7 @@ export function SubtitleMenu({
       <label className="player-setting">
         Position
         <select
+          aria-label="Subtitle position"
           value={prefs.subtitlePosition}
           onChange={(e) =>
             setPrefs({
@@ -986,6 +987,28 @@ export default function VideoPlayer({
       v.removeEventListener("loadeddata", refresh);
     };
   }, [src]);
+  useEffect(() => {
+    const applyPosition = () => {
+      for (const track of tracks)
+        for (const cue of Array.from(track.cues || [])) {
+          if (!(cue instanceof VTTCue)) continue;
+          cue.snapToLines = false;
+          cue.line =
+            prefs.subtitlePosition === "top"
+              ? prefs.subtitleOffset
+              : 100 - prefs.subtitleOffset;
+          cue.lineAlign = prefs.subtitlePosition === "top" ? "start" : "end";
+        }
+    };
+    applyPosition();
+    tracks.forEach((track) =>
+      track.addEventListener("cuechange", applyPosition),
+    );
+    return () =>
+      tracks.forEach((track) =>
+        track.removeEventListener("cuechange", applyPosition),
+      );
+  }, [tracks, prefs.subtitlePosition, prefs.subtitleOffset]);
   const selectTrack = (index: number) => {
     tracks.forEach((t, i) => (t.mode = i === index ? "showing" : "disabled"));
     setTrackIndex(index);
