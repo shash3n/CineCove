@@ -3,7 +3,7 @@ export default defineConfig({
   testDir: "./tests",
   timeout: 60000,
   use: {
-    baseURL: process.env.CINEVAULT_TEST_URL || "http://127.0.0.1:5173",
+    baseURL: process.env.CINECOVE_TEST_URL || "http://127.0.0.1:5173",
     headless: true,
     channel: "chrome",
     actionTimeout: 10000,

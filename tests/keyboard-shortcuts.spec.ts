@@ -121,7 +121,7 @@ test("shortcut editor works in fullscreen, remembers bindings, toggles captions 
     .poll(() =>
       page.evaluate(
         () =>
-          JSON.parse(localStorage.getItem("cinevault.preferences")!)
+          JSON.parse(localStorage.getItem("cinecove.preferences")!)
             .keyboardShortcuts,
       ),
     )

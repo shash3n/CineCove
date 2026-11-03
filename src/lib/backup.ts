@@ -9,7 +9,7 @@ import {
 } from "../types";
 
 export interface UserBackup {
-  app: "CineVault";
+  app: "CineCove";
   version: 1;
   videos: VideoEntry[];
   folders: Folder[];
@@ -19,7 +19,7 @@ export interface UserBackup {
 }
 const fail = () => {
   throw new Error(
-    "This is not a valid CineVault v1 backup. No data was imported.",
+    "This is not a valid CineCove v1 backup. No data was imported.",
   );
 };
 const string = (v: unknown): string =>
@@ -40,7 +40,12 @@ function records(v: unknown): Record<string, unknown>[] {
 }
 export function parseBackup(source: string): UserBackup {
   const data = JSON.parse(source);
-  if (!data || data.app !== "CineVault" || data.version !== 1) return fail();
+  if (
+    !data ||
+    !["CineCove", "CineVault"].includes(data.app) ||
+    data.version !== 1
+  )
+    return fail();
   const videos = records(data.videos).map((r) => {
     const v = {
       id: string(r.id),
@@ -146,7 +151,7 @@ export function parseBackup(source: string): UserBackup {
   )
     return fail();
   return {
-    app: "CineVault",
+    app: "CineCove",
     version: 1,
     videos,
     folders,
@@ -159,7 +164,7 @@ export function parseBackup(source: string): UserBackup {
 export function serializeBackup(data: Omit<UserBackup, "app" | "version">) {
   // Browser permission handles are device-bound and cannot be exported.
   return JSON.stringify(
-    { app: "CineVault", version: 1, ...data },
+    { app: "CineCove", version: 1, ...data },
     (key, value) => (key === "handle" ? undefined : value),
     2,
   );

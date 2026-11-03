@@ -31,7 +31,7 @@ test("queue keeps video, metadata and episodes aligned on wide screens", async (
         episode: i,
       });
     localStorage.setItem(
-      "cinevault.queue",
+      "cinecove.queue",
       JSON.stringify(["Episode2.mp4:3:1"]),
     );
   });
@@ -55,6 +55,18 @@ test("queue keeps video, metadata and episodes aligned on wide screens", async (
     .getByRole("button", { name: "Play Episode1.mp4", exact: true })
     .click();
   await expect(page.locator(".queue-sidebar")).toBeVisible();
+  const autoNext = (await page.locator(".auto-next-toggle").boundingBox())!;
+  const nextIcon = (await page
+    .getByRole("button", { name: "Audio tracks", exact: true })
+    .locator("svg")
+    .boundingBox())!;
+  expect(Math.abs(autoNext.height - nextIcon.height)).toBeLessThanOrEqual(1);
+  expect(
+    Math.abs(
+      autoNext.y + autoNext.height / 2 - nextIcon.y - nextIcon.height / 2,
+    ),
+  ).toBeLessThanOrEqual(1);
+  await page.screenshot({ path: "test-results/player-controls-alignment.png" });
   const stage = (await page.locator(".player-stage").boundingBox())!;
   for (const selector of [".now-playing-info", ".episode-browser"]) {
     const box = (await page.locator(selector).boundingBox())!;

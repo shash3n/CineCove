@@ -235,13 +235,13 @@ test("queue reorder, removal, auto-next, credits watch status, and blinds work t
     .poll(() =>
       page.evaluate(
         () =>
-          JSON.parse(localStorage.getItem("cinevault.preferences")!).autoNext,
+          JSON.parse(localStorage.getItem("cinecove.preferences")!).autoNext,
       ),
     )
     .toBe(false);
   await expect
     .poll(() =>
-      page.evaluate(() => JSON.parse(localStorage.getItem("cinevault.queue")!)),
+      page.evaluate(() => JSON.parse(localStorage.getItem("cinecove.queue")!)),
     )
     .toEqual([]);
 });

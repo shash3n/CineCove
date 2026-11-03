@@ -443,6 +443,10 @@ export function VideoLibrary({
   setFormat,
   res,
   setRes,
+  watchStatus,
+  setWatchStatus,
+  mediaType,
+  setMediaType,
   heading = "Your library",
   filtered = false,
   compact = false,
@@ -462,6 +466,10 @@ export function VideoLibrary({
   setFormat: (s: string) => void;
   res: string;
   setRes: (s: string) => void;
+  watchStatus: string;
+  setWatchStatus: (s: string) => void;
+  mediaType: string;
+  setMediaType: (s: string) => void;
   heading?: string;
   filtered?: boolean;
   compact?: boolean;
@@ -495,9 +503,13 @@ export function VideoLibrary({
           <button
             className={`button subtle filter-button ${filters ? "selected" : ""}`}
             onClick={() => setFilters(!filters)}
+            aria-expanded={filters}
           >
             <SlidersHorizontal size={15} />
-            Filters{(format || res) && <span className="tiny-dot" />}
+            Filters
+            {(format || res || watchStatus || mediaType) && (
+              <span className="tiny-dot" />
+            )}
           </button>
           <div className="view-switch">
             <button
@@ -521,6 +533,30 @@ export function VideoLibrary({
       </div>
       {filters && (
         <div className="filter-panel">
+          <label>
+            Watch status
+            <select
+              aria-label="Filter watch status"
+              value={watchStatus}
+              onChange={(e) => setWatchStatus(e.target.value)}
+            >
+              <option value="">All videos</option>
+              <option value="watched">Watched</option>
+              <option value="unwatched">Unwatched</option>
+            </select>
+          </label>
+          <label>
+            Media type
+            <select
+              aria-label="Filter media type"
+              value={mediaType}
+              onChange={(e) => setMediaType(e.target.value)}
+            >
+              <option value="">All types</option>
+              <option value="tv">TV shows</option>
+              <option value="movies">Movies</option>
+            </select>
+          </label>
           <label>
             Format
             <select
@@ -570,6 +606,8 @@ export function VideoLibrary({
             onClick={() => {
               setFormat("");
               setRes("");
+              setWatchStatus("");
+              setMediaType("");
             }}
           >
             Clear filters

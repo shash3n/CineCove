@@ -335,7 +335,7 @@ export function SettingsPage({
             engine runs on your device.
           </p>
         </div>
-        <span>CINEVAULT 1.0</span>
+        <span>CINECOVE 1.0</span>
       </div>
     </div>
   );

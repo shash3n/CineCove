@@ -11,6 +11,7 @@ let database: Promise<IDBDatabase> | undefined;
 function db() {
   return (database ??= new Promise((resolve, reject) => {
     let blocked = false;
+    // Retain the database name so existing libraries survive the rebrand.
     const req = indexedDB.open("cinevault", 2);
     req.onupgradeneeded = () => {
       for (const name of ["videos", "playlists", "folders", "shows"])
@@ -21,7 +22,7 @@ function db() {
       blocked = true;
       reject(
         new Error(
-          "Close other CineVault tabs, then reload to finish updating your local library. Your saved entries are kept.",
+          "Close other CineCove tabs, then reload to finish updating your local library. Your saved entries are kept.",
         ),
       );
     };
@@ -107,7 +108,9 @@ export const storage = {
 export function loadPreferences(): Preferences {
   try {
     const stored = JSON.parse(
-      localStorage.getItem("cinevault.preferences") || "{}",
+      localStorage.getItem("cinecove.preferences") ||
+        localStorage.getItem("cinevault.preferences") ||
+        "{}",
     );
     return {
       ...defaults,
@@ -121,5 +124,5 @@ export function loadPreferences(): Preferences {
   }
 }
 export function savePreferences(p: Preferences) {
-  localStorage.setItem("cinevault.preferences", JSON.stringify(p));
+  localStorage.setItem("cinecove.preferences", JSON.stringify(p));
 }

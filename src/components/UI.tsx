@@ -14,16 +14,16 @@ export function Logo({ small = false }: { small?: boolean }) {
       <svg className="brand-icon" viewBox="0 0 64 64" aria-hidden="true">
         <rect width="64" height="64" rx="18" fill="currentColor" opacity=".1" />
         <path
-          d="M44 19a19 19 0 1 0 0 26"
+          d="M49.5 21.75a19 19 0 1 0 0 20.5"
           fill="none"
           stroke="currentColor"
           strokeWidth="6"
           strokeLinecap="round"
         />
-        <path d="m29 23 15 9-15 9z" fill="currentColor" />
+        <path d="m30.5 23 15 9-15 9z" fill="currentColor" />
       </svg>
       <span>
-        Cine<span className="brand-light">Vault</span>
+        Cine<span className="brand-light">Cove</span>
         <small>YOUR PRIVATE CINEMA</small>
       </span>
     </span>

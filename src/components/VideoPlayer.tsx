@@ -1356,7 +1356,7 @@ export default function VideoPlayer({
           <span>Back to library</span>
         </button>
         <span className="player-wordmark">
-          CINEVAULT <i>/</i> NOW PLAYING
+          CINECOVE <i>/</i> NOW PLAYING
         </span>
         <button
           className={`icon-button ${entry.favorite ? "accent" : ""}`}

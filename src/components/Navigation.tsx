@@ -125,7 +125,7 @@ export function AppSidebar({
           </button>
           <a
             className="nav-item"
-            href="https://github.com/shash3n/CineVault"
+            href="https://github.com/shash3n/CineCove"
             target="_blank"
             rel="noopener noreferrer"
             onClick={close}

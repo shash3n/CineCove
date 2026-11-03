@@ -177,7 +177,7 @@ test("daylight surfaces stay readable and the logo and hero follow every accent"
   }
   expect(new Set(colors).size).toBe(3);
   await page.screenshot({
-    path: "test-results/cinevault-daylight.png",
+    path: "test-results/cinecove-daylight.png",
     fullPage: true,
   });
   await page
@@ -185,7 +185,7 @@ test("daylight surfaces stay readable and the logo and hero follow every accent"
     .selectOption("dark");
   await page.getByRole("button", { name: "Home", exact: true }).click();
   await page.screenshot({
-    path: "test-results/cinevault-mint.png",
+    path: "test-results/cinecove-mint.png",
     fullPage: true,
   });
 });
@@ -358,7 +358,7 @@ test("MKV exposes and plays embedded subtitle and alternate audio tracks locally
     .poll(() =>
       page.evaluate(
         () =>
-          JSON.parse(localStorage.getItem("cinevault.preferences")!)
+          JSON.parse(localStorage.getItem("cinecove.preferences")!)
             .captionsEnabled,
       ),
     )

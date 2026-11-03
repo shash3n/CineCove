@@ -23,6 +23,12 @@ const data = {
   preferences: defaults,
 };
 describe("portable user backups", () => {
+  it("imports backups exported before the project was renamed", () => {
+    const source = JSON.parse(serializeBackup(data));
+    expect(source.app).toBe("CineCove");
+    source.app = "CineVault";
+    expect(parseBackup(JSON.stringify(source)).videos[0].position).toBe(42);
+  });
   it("round-trips progress, favorites, collections and preferences without permissions", () => {
     const json = serializeBackup(data);
     expect(json).not.toContain('"handle"');

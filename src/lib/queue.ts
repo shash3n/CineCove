@@ -1,7 +1,9 @@
 export function loadQueue(): string[] {
   try {
     const saved: unknown = JSON.parse(
-      localStorage.getItem("cinevault.queue") || "[]",
+      localStorage.getItem("cinecove.queue") ||
+        localStorage.getItem("cinevault.queue") ||
+        "[]",
     );
     return Array.isArray(saved)
       ? [...new Set(saved.filter((id): id is string => typeof id === "string"))]

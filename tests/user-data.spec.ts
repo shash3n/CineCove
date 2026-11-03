@@ -227,7 +227,7 @@ test("auto-sync refreshes added, missing and restored files while preserving his
   ).toHaveCount(0);
   await expect(
     page.locator(".sidebar").getByRole("link", { name: "GitHub", exact: true }),
-  ).toHaveAttribute("href", "https://github.com/shash3n/CineVault");
+  ).toHaveAttribute("href", "https://github.com/shash3n/CineCove");
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Reconnect Movies", exact: true }),

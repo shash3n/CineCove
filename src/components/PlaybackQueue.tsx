@@ -60,7 +60,7 @@ export function PlaybackQueue({
               event.preventDefault();
               event.stopPropagation();
               const source = event.dataTransfer.getData(
-                "text/x-cinevault-queue",
+                "text/x-cinecove-queue",
               );
               if (source) onMove(source, v.id);
               setDragged(null);
@@ -72,7 +72,7 @@ export function PlaybackQueue({
               draggable
               aria-label={`Drag ${title(v.name)} to reorder`}
               onDragStart={(event) => {
-                event.dataTransfer.setData("text/x-cinevault-queue", v.id);
+                event.dataTransfer.setData("text/x-cinecove-queue", v.id);
                 event.dataTransfer.effectAllowed = "move";
                 setDragged(v.id);
               }}

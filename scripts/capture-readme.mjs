@@ -1,7 +1,7 @@
 // Reproducible Chrome captures with an isolated context and fictional data.
 import { chromium } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
-const base = process.env.CINEVAULT_CAPTURE_URL || "http://127.0.0.1:5173";
+const base = process.env.CINECOVE_CAPTURE_URL || "http://127.0.0.1:5173";
 const browser = await chromium.launch({
   channel: "chrome",
   headless: true,
@@ -49,7 +49,7 @@ try {
       c.fillText(name, 42, 465);
       c.font = "13px sans-serif";
       c.fillStyle = "#ffffffb0";
-      c.fillText("CINEVAULT DEMO · A FICTIONAL STORY", 44, 503);
+      c.fillText("CINECOVE DEMO · A FICTIONAL STORY", 44, 503);
       return canvas.toDataURL("image/jpeg", 0.87);
     }
     const names = [
@@ -149,7 +149,7 @@ try {
       name: "Comfort Watches",
       videoIds: [mainId, "demo-2", "demo-4"],
     });
-    localStorage.setItem("cinevault.queue", JSON.stringify(["demo-1", "demo-2"]));
+    localStorage.setItem("cinecove.queue", JSON.stringify(["demo-1", "demo-2"]));
     return Array.from(data);
   });
   await page.reload();

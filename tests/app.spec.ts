@@ -22,7 +22,7 @@ test("library, playback, history, subtitles, playlists, settings and privacy", a
     page.getByRole("heading", { name: "Your collection. Your cinema." }),
   ).toBeVisible();
   await page.screenshot({
-    path: "test-results/cinevault-desktop.png",
+    path: "test-results/cinecove-desktop.png",
     fullPage: true,
   });
   // Produce a real, local WebM fixture in the browser. Nothing is downloaded.
@@ -52,7 +52,7 @@ test("library, playback, history, subtitles, playlists, settings and privacy", a
       ctx.fillRect(0, 0, 640, 360);
       ctx.fillStyle = "#c2a4ff";
       ctx.font = "38px sans-serif";
-      ctx.fillText("CineVault · Private screening", 45, 175);
+      ctx.fillText("CineCove · Private screening", 45, 175);
       ctx.fillRect(45, 205, (frame++ * 4) % 550, 4);
     }, 83);
     await new Promise((r) => setTimeout(r, 3500));
@@ -208,7 +208,7 @@ test("library, playback, history, subtitles, playlists, settings and privacy", a
   );
   await expect(page.locator(".continue-section .video-card")).toBeVisible();
   await page.screenshot({
-    path: "test-results/cinevault-mobile.png",
+    path: "test-results/cinecove-mobile.png",
     fullPage: true,
   });
   expect(

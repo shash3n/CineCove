@@ -46,7 +46,7 @@ export function ImportDialog({
         <div className="privacy-note">
           <ShieldCheck size={20} />
           <p>
-            No uploads, ever. CineVault reads only the files you select.
+            No uploads, ever. CineCove reads only the files you select.
             Removing a video from your library never deletes the original.
           </p>
         </div>

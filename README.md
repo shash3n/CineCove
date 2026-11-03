@@ -1,18 +1,22 @@
-# CineVault
+# CineCove
 
 **Your private, local-first cinema — right in your browser.**
 
-[**Launch CineVault**](https://cinevault-player.vercel.app)
+[**Launch CineCove**](https://cinecove.vercel.app)
 
-CineVault is a responsive, browser-based video library and player built with React, TypeScript, Tailwind CSS, and HTML5 Video. Organize local movies and TV shows, resume playback, customize subtitles, and manage playlists without uploading your media. An optional, locally hosted FFmpeg.wasm engine provides media inspection, embedded-track extraction, and compatibility conversion.
+CineCove is a responsive, browser-based video library and player built with React, TypeScript, Tailwind CSS, and HTML5 Video. Organize local movies and TV shows, resume playback, customize subtitles, and manage playlists without uploading your media. An optional, locally hosted FFmpeg.wasm engine provides media inspection, embedded-track extraction, and compatibility conversion.
 
 > **Privacy by design:** Your video files stay on your device. No account, backend, cloud media storage, analytics, CDN, or external font service is required. Browser storage holds library metadata, preferences, and supported file handles—not copies of entire movies.
+
+## Moving to the new website address
+
+Browser libraries belong to a specific website address. Before switching, use **Settings → Local storage → Export user data** on the old site, then import that backup on the new site and reconnect your folders. Existing backups remain supported. On the same address, the rename keeps your saved library, preferences, and queue.
 
 ## Screenshots
 
 Captured in Google Chrome using an isolated demo library. All titles, AI-generated artwork, favorites, and playlists below are fictional; no personal media is shown or changed.
 
-![CineVault library with fictional movies and a grouped TV show](docs/screenshots/library-chrome.png)
+![CineCove library with fictional movies and a grouped TV show](docs/screenshots/library-chrome.png)
 
 <details>
 <summary>Home, player, shows, favorites, playlists, and settings</summary>
@@ -77,7 +81,7 @@ To reproduce these captures, start `npm run dev`, then run `node scripts/capture
 
 - Import one or more videos, drag and drop files, or connect a folder recursively.
 - Browse root folders and subfolders with breadcrumbs and folder-first navigation.
-- Search filenames; filter by format and resolution; sort by name, date, duration, or size.
+- Search filenames; filter by watch status, movies/TV shows, format, and resolution; sort by name, date, duration, or size.
 - Switch between grid and list views, inspect video details, and set custom thumbnails.
 - Save favorites and create, rename, edit, or delete playlists. Select videos in bulk with searchable checkboxes.
 - Connected folders auto-sync on launch, every 30 seconds while visible, and when returning to the app. Originals are never deleted when you remove library entries; removed entries stay excluded from automatic scans.
@@ -89,7 +93,7 @@ To reproduce these captures, start `npm run dev`, then run `node scripts/capture
 - Map folders to seasons, including `Season 1`, `S01`, and special episodes in Season 0.
 - Edit season-folder mappings and override assignments for individual episodes.
 - Browse episodes by season and move to the previous or next episode across seasons.
-- Keep TV organization inside CineVault—no files are moved or renamed on disk.
+- Keep TV organization inside CineCove—no files are moved or renamed on disk.
 
 ### Playback that remembers
 
@@ -158,13 +162,13 @@ The production build is written to `dist/` and can be served by a static HTTP se
 
 ## Video formats and compatibility
 
-CineVault recognizes these containers:
+CineCove recognizes these containers:
 
 `MP4` · `MKV` · `AVI` · `MOV` · `WebM` · `M4V` · `MPEG` · `MPG` · `WMV` · `FLV` · `3GP` · `TS` · `MTS` · `M2TS` · `OGV`
 
 **Recognized does not mean playable.** Actual playback depends on the codecs supported by your browser, operating system, and device. MP4 with H.264/AAC and WebM with VP8/VP9/Opus generally offer broad compatibility. MKV support varies.
 
-CineVault tries native playback first, without copying the full movie into JavaScript memory. If decoding fails, it offers two opt-in recovery options:
+CineCove tries native playback first, without copying the full movie into JavaScript memory. If decoding fails, it offers two opt-in recovery options:
 
 | Option               | What it does                                                                               | Trade-off                                                                           |
 | -------------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
@@ -191,11 +195,11 @@ Folder sync polls connected folders without copying video contents. Scans run on
 
 ### Back up or move your library
 
-If an older folder import keeps asking you to locate individual videos after restarting, use **Settings → Library & folders → Reconnect** once to connect it with the native folder picker. CineVault saves the folder handle and restores nested files through that folder. In Chrome, choose **Allow on every visit** when offered. Playback renews saved folder permission directly from the Play click; ordinary file-input imports still require reselection because browsers do not persist their access.
+If an older folder import keeps asking you to locate individual videos after restarting, use **Settings → Library & folders → Reconnect** once to connect it with the native folder picker. CineCove saves the folder handle and restores nested files through that folder. In Chrome, choose **Allow on every visit** when offered. Playback renews saved folder permission directly from the Play click; ordinary file-input imports still require reselection because browsers do not persist their access.
 
 Use **Settings → Local storage → Export user data** to download a versioned JSON backup. **Import user data** validates a backup and asks for confirmation before merging it: matching IDs use backup metadata, other entries stay, and preferences are restored. Existing file handles on this device are retained. Import is atomic for IndexedDB data; videos are never copied. Backups do not include video contents or portable folder permissions, so reconnect folders on another browser or device. Import accepts backups up to 100 MB. Treat the backup as personal data because it contains filenames, folder labels, history, and thumbnails.
 
-**Upgrading from an older CineVault version?** Reconnect and scan previously imported folders once to rebuild subfolder paths. Existing library entries migrate to IndexedDB v2 without clearing the library.
+**Upgrading from an older CineCove version?** Reconnect and scan previously imported folders once to rebuild subfolder paths. Existing library entries migrate to IndexedDB v2 without clearing the library.
 
 Library data is tied to the browser profile and site origin. Clearing site data can remove library records and preferences, but does not delete original media files.
 
@@ -225,7 +229,7 @@ src/
     organization.ts       Folder and season mapping
   styles.css              Tailwind, themes, layouts
 public/
-  icon.svg                CineVault app icon
+  icon.svg                CineCove app icon
 vite.config.ts            Vite and FFmpeg asset configuration
 tests/
   app.spec.ts             Browser integration tests
@@ -253,7 +257,7 @@ Additional tests cover subtitle parsing and sanitization, container detection, s
 To run the unsupported-file recovery test against the production preview:
 
 ```bash
-CINEVAULT_TEST_URL=http://127.0.0.1:4173 npx playwright test -g "unsupported file"
+CINECOVE_TEST_URL=http://127.0.0.1:4173 npx playwright test -g "unsupported file"
 ```
 
 Manual testing is still recommended for real folder permission prompts, diverse codecs and MKV files, embedded tracks, fullscreen/PiP, and other browser/OS combinations.
@@ -262,7 +266,7 @@ Manual testing is still recommended for real folder permission prompts, diverse 
 
 - Browser codec support determines which original files play natively.
 - Local FFmpeg conversion is memory-intensive and restricted to smaller files.
-- Folder sync runs while CineVault is open; browser permissions must remain granted. It cannot watch folders while the app is closed.
+- Folder sync runs while CineCove is open; browser permissions must remain granted. It cannot watch folders while the app is closed.
 - Browser permissions and file handles may need reconnection.
 - Clearing browser site data removes locally stored library information.
 - Skip-intro detection is not available because local videos do not provide reliable intro markers.
@@ -277,4 +281,4 @@ Manual testing is still recommended for real folder permission prompts, diverse 
 
 ---
 
-**CineVault — your media, your library, your screen.**
+**CineCove — your media, your library, your screen.**

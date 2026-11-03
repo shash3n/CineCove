@@ -84,6 +84,8 @@ export default function App() {
     [sort, setSort] = useState(prefs.sort),
     [format, setFormat] = useState(""),
     [res, setRes] = useState(""),
+    [watchStatus, setWatchStatus] = useState(""),
+    [mediaType, setMediaType] = useState(""),
     [view, setView] = useState<"grid" | "list">("grid"),
     [sidebar, setSidebar] = useState(false),
     [importDialog, setImportDialog] = useState(false),
@@ -131,7 +133,7 @@ export default function App() {
   }, []);
   useEffect(() => {
     try {
-      localStorage.setItem("cinevault.queue", JSON.stringify(queueIds));
+      localStorage.setItem("cinecove.queue", JSON.stringify(queueIds));
     } catch {
       notify("Queue could not be saved in this browser.", true);
     }
@@ -291,7 +293,7 @@ export default function App() {
             ? `${needsPermission} folder(s) need permission. Use Reconnect below; allow access on every visit if Chrome offers it.`
             : folders.length
               ? `Auto-sync on · Last checked ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-              : "Connected folders sync automatically every 30 seconds and when you return to CineVault.",
+              : "Connected folders sync automatically every 30 seconds and when you return to CineCove.",
       );
     } finally {
       importLock.current = false;
@@ -336,7 +338,7 @@ export default function App() {
       );
       const a = document.createElement("a");
       a.href = url;
-      a.download = `cinevault-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `cinecove-backup-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       notify(
@@ -352,7 +354,7 @@ export default function App() {
         throw new Error("Backup exceeds the 100 MB safety limit.");
       const data = parseBackup(await file.text());
       setConfirm({
-        title: "Import CineVault data?",
+        title: "Import CineCove data?",
         message: `Merge ${data.videos.length} videos, ${data.playlists.length} playlists and ${data.shows.length} shows. Matching IDs use the backup's metadata; other entries stay. Preferences are restored. Reconnect folders on a new device.`,
         action: async () => {
           if (importLock.current) {
@@ -407,7 +409,7 @@ export default function App() {
   }
   useEffect(() => {
     const restore = () => {
-      const state = history.state?.cinevault;
+      const state = history.state?.cinecove;
       if (state) {
         setPageState(state.page);
         setFolderLocation(state.folder || null);
@@ -418,29 +420,33 @@ export default function App() {
         setSearch("");
         setFormat("");
         setRes("");
+        setWatchStatus("");
+        setMediaType("");
       }
     };
-    if (history.state?.cinevault) restore();
+    if (history.state?.cinecove) restore();
     else
       history.replaceState(
-        { ...history.state, cinevault: { page: "Home", folder: null } },
+        { ...history.state, cinecove: { page: "Home", folder: null } },
         "",
       );
     window.addEventListener("popstate", restore);
     return () => window.removeEventListener("popstate", restore);
   }, []);
   const navigateFolder = (folder: FolderLocation | null) => {
-    history.pushState({ cinevault: { page, folder } }, "");
+    history.pushState({ cinecove: { page, folder } }, "");
     setFolderLocation(folder);
   };
   const setPage = (p: Page) => {
     if (p !== page || folderLocation)
-      history.pushState({ cinevault: { page: p, folder: null } }, "");
+      history.pushState({ cinecove: { page: p, folder: null } }, "");
     setPageState(p);
     setFolderLocation(null);
     setSearch("");
     setFormat("");
     setRes("");
+    setWatchStatus("");
+    setMediaType("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
   useEffect(() => {
@@ -675,7 +681,7 @@ export default function App() {
     }
     update(v.id, { continueHidden: false });
     history.pushState(
-      { cinevault: { page, folder: folderLocation, playerId: v.id } },
+      { cinecove: { page, folder: folderLocation, playerId: v.id } },
       "",
     );
     setPlayer({ id: v.id, file });
@@ -792,7 +798,7 @@ export default function App() {
   const remove = (v: VideoEntry) =>
     setConfirm({
       title: "Remove from your library?",
-      message: `“${v.name}” will be removed from CineVault. Your original file stays on your device.`,
+      message: `“${v.name}” will be removed from CineCove. Your original file stays on your device.`,
       action: () => {
         if (importLock.current) {
           notify("Please wait for the folder scan or import to finish.");
@@ -928,6 +934,8 @@ export default function App() {
       (v) =>
         v.name.toLowerCase().includes(search.toLowerCase()) &&
         (!format || v.format === format) &&
+        (!watchStatus || isWatched(v) === (watchStatus === "watched")) &&
+        (!mediaType || !!episodeFor(v, shows) === (mediaType === "tv")) &&
         (!res ||
           (res === "SD"
             ? (v.sourceHeight || v.height) > 0 &&
@@ -1380,6 +1388,10 @@ export default function App() {
                 setFormat={setFormat}
                 res={res}
                 setRes={setRes}
+                watchStatus={watchStatus}
+                setWatchStatus={setWatchStatus}
+                mediaType={mediaType}
+                setMediaType={setMediaType}
                 heading={
                   search
                     ? `Results for “${search}”`
@@ -1391,6 +1403,8 @@ export default function App() {
                   !!search ||
                   !!format ||
                   !!res ||
+                  !!watchStatus ||
+                  !!mediaType ||
                   (page !== "Home" && page !== "All Videos")
                 }
                 compact={prefs.compact}
@@ -1452,7 +1466,7 @@ export default function App() {
             <CircleHelp size={13} />A little help <ArrowUpRight size={12} />
           </button>
           <span className="footer-brand">
-            CINEVAULT <span>1.0</span>
+            CINECOVE <span>1.0</span>
           </span>
         </footer>
       </div>
@@ -1505,7 +1519,7 @@ export default function App() {
               update(reconnect.id, { continueHidden: false, missing: false });
               history.pushState(
                 {
-                  cinevault: {
+                  cinecove: {
                     page,
                     folder: folderLocation,
                     playerId: reconnect.id,
@@ -1829,7 +1843,7 @@ export default function App() {
             }
             onClose={() => {
               history.replaceState(
-                { cinevault: { page, folder: folderLocation } },
+                { cinecove: { page, folder: folderLocation } },
                 "",
               );
               setPlayer(null);
