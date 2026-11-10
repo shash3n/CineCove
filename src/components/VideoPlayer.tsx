@@ -3,6 +3,7 @@ import { KeyboardShortcuts } from "./KeyboardShortcuts";
 import { shortcutDefaults, shortcutKey, keyLabel } from "../lib/shortcuts";
 import { isWatched, WATCHED_THRESHOLD } from "../lib/playback";
 import { useState, useRef, useEffect, useCallback } from "react";
+import type { MouseEvent } from "react";
 import {
   ArrowLeft,
   Play,
@@ -751,6 +752,7 @@ export default function VideoPlayer({
 }) {
   const video = useRef<HTMLVideoElement>(null),
     stage = useRef<HTMLDivElement>(null),
+    lastMousePosition = useRef<{ x: number; y: number } | null>(null),
     service = useRef(new PlaybackService()),
     subtitleInput = useRef<HTMLInputElement>(null),
     lastSave = useRef(0),
@@ -946,6 +948,24 @@ export default function VideoPlayer({
       if (video.current && !video.current.paused) setVisible(false);
     }, 3000);
   }, []);
+  const handleMouseMove = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      const previous = lastMousePosition.current;
+      const current = { x: event.clientX, y: event.clientY };
+      if (!previous) {
+        lastMousePosition.current = current;
+        wake();
+        return;
+      }
+      // Ignore tiny sensor jitter; compare against the last accepted position
+      // so deliberate slow movement still wakes the controls.
+      if (Math.hypot(current.x - previous.x, current.y - previous.y) < 4)
+        return;
+      lastMousePosition.current = current;
+      wake();
+    },
+    [wake],
+  );
   useEffect(() => {
     wake();
   }, [playing, menu, wake]);
@@ -1369,7 +1389,7 @@ export default function VideoPlayer({
       <div
         ref={stage}
         className={`player-stage ${visible || !playing || menu || hints ? "controls-visible" : "controls-hidden"}`}
-        onMouseMove={wake}
+        onMouseMove={handleMouseMove}
         onTouchStart={wake}
         onDoubleClick={(e) => {
           if (
